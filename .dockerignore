@@ -1,0 +1,15 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+node_modules
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+server/node_modules
+dist
+server/dist
+coverage
+*.log
+.DS_Store

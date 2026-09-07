@@ -1,0 +1,84 @@
+# Dependencies
+node_modules/
+server/node_modules/
+
+# Build and compiler output
+dist/
+server/dist/
+.vite/
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+
+# Environment files and secrets
+.env
+.env.*
+server/.env
+server/.env.*
+!.env.example
+!server/.env.example
+*.local
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Logs and runtime files
+*.log
+logs/
+*.pid
+*.pid.lock
+*.seed
+
+# Tests and coverage
+test-results/
+playwright-report/
+coverage/
+.nyc_output/
+
+# Backups, database exports, and generated data
+backups/
+backup/
+*.dump
+*.backup
+*.bak
+*.sql.gz
+*.sqlite
+*.sqlite3
+*.db
+
+# Archives and packaged artifacts
+*.zip
+*.rar
+*.7z
+*.tar
+*.tar.gz
+*.tgz
+*.gz
+*.bz2
+*.xz
+
+# Temporary and cache directories
+tmp/
+temp/
+.tmp/
+.temp/
+.cache/
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Editors and operating systems
+.idea/
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.example.json
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local tooling state
+.codex/
+.agents/

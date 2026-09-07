@@ -1,0 +1,36 @@
+{
+  "name": "atlas-workforce",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n web,api -c green,blue \"npm:dev:web\" \"npm:dev:api\"",
+    "dev:web": "vite",
+    "dev:api": "npm --prefix server run dev",
+    "build": "tsc -b && vite build",
+    "build:all": "npm run build && npm --prefix server run build",
+    "test": "vitest run",
+    "test:all": "npm run test && npm --prefix server run test",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "check": "tsc -b --pretty false && npm --prefix server run build",
+    "docker:dev": "docker compose -f compose.dev.yml up --build",
+    "docker:prod": "docker compose up --build -d"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "lucide-react": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "vite": "latest"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "concurrently": "latest",
+    "prettier": "^3.9.6",
+    "typescript": "latest",
+    "vitest": "latest"
+  }
+}

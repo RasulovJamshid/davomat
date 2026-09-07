@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: atlas
+          POSTGRES_USER: atlas
+          POSTGRES_PASSWORD: atlas_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U atlas -d atlas"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://atlas:atlas_ci_password@127.0.0.1:5432/atlas
+      JWT_SECRET: ci-only-secret-that-is-at-least-thirty-two-characters
+      RUN_MIGRATIONS: "true"
+      RUN_SEED: "true"
+      CORS_ORIGINS: http://localhost:5173
+      APP_PUBLIC_URL: http://localhost:5173
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm ci --prefix server --no-audit --no-fund
+      - run: npm run test:all
+      - run: npm run build:all
+      - run: docker compose -f compose.dev.yml config --quiet
+      - run: docker compose --env-file .env.example config --quiet
+      - run: npx playwright install --with-deps chromium
+      - name: Browser workflows
+        run: |
+          npm run dev > /tmp/atlas-dev.log 2>&1 &
+          for i in {1..30}; do curl --fail http://localhost:5173 >/dev/null 2>&1 && curl --fail http://localhost:4000/health >/dev/null 2>&1 && break; sleep 1; done
+          npm run test:e2e || (cat /tmp/atlas-dev.log && exit 1)

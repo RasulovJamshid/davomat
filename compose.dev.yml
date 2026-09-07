@@ -1,0 +1,78 @@
+name: atlas-dev
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: atlas
+      POSTGRES_USER: atlas
+      POSTGRES_PASSWORD: atlas_dev_password
+      TZ: Asia/Tashkent
+    ports:
+      - "127.0.0.1:${DEV_DB_PORT:-5433}:5432"
+    volumes:
+      - atlas_dev_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atlas -d atlas"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+      target: development
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgresql://atlas:atlas_dev_password@db:5432/atlas
+      JWT_SECRET: local-development-secret-change-before-production
+      JWT_EXPIRES_IN: 8h
+      CORS_ORIGINS: http://localhost:5173
+      RUN_MIGRATIONS: "true"
+      RUN_SEED: "true"
+      SEED_ADMIN_EMAIL: admin@atlas.local
+      SEED_ADMIN_PASSWORD: ChangeMe123!
+      LOG_LEVEL: debug
+      APP_PUBLIC_URL: http://localhost:5173
+      EMAIL_FROM: Atlas Development <no-reply@atlas.local>
+      CHOKIDAR_USEPOLLING: "true"
+      TZ: Asia/Tashkent
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./server/src:/app/src
+      - ./server/migrations:/app/migrations
+      - /app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      start_period: 10s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      target: development
+    environment:
+      VITE_API_URL: http://localhost:4000/api
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./src:/app/src
+      - ./index.html:/app/index.html
+      - ./vite.config.ts:/app/vite.config.ts
+      - /app/node_modules
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  atlas_dev_db:
