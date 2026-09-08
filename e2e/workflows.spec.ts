@@ -78,14 +78,40 @@ test("employee can open all self-service workspaces", async ({ page }) => {
 test("advanced workforce controls are reachable", async ({ page }) => {
   await page.goto("/");
   await page.getByLabel("Email address").fill("admin@atlas.local");
-  await page.locator('input[autocomplete="current-password"]').fill("ChangeMe123!");
+  await page
+    .locator('input[autocomplete="current-password"]')
+    .fill("ChangeMe123!");
   await page.getByRole("button", { name: /Sign in/ }).click();
-  await expect(page.getByRole("heading",{name:/Good afternoon/})).toBeVisible();
-  const menu=page.getByRole("button",{name:"Open menu"});if(await menu.isVisible())await menu.click();
-  await page.locator("aside").getByRole("button",{name:/Advanced/}).click();
-  await expect(page.getByRole("heading",{name:"Advanced operations"})).toBeVisible();
-  for(const name of ["Devices","Payroll rules","Scheduling","Reports"]){await page.locator(".advanced-tabs").getByRole("button",{name}).click();}
-  await expect(page.getByRole("heading",{name:"Scheduled reports"})).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /Good afternoon/ }),
+  ).toBeVisible();
+  const menu = page.getByRole("button", { name: "Open menu" });
+  if (await menu.isVisible()) await menu.click();
+  await page
+    .locator("aside")
+    .getByRole("button", { name: /Advanced/ })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Advanced operations" }),
+  ).toBeVisible();
+  for (const name of ["Devices", "Payroll rules"]) {
+    await page.locator(".advanced-tabs").getByRole("button", { name }).click();
+  }
+  await page
+    .locator(".advanced-tabs")
+    .getByRole("button", { name: "Scheduling" })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Company workweek", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Workday starts")).toHaveValue("08:00");
+  await page
+    .locator(".advanced-tabs")
+    .getByRole("button", { name: "Reports" })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Scheduled reports" }),
+  ).toBeVisible();
 });
 
 test("dashboard action controls open their complete workflows", async ({

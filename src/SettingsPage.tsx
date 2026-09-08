@@ -62,6 +62,8 @@ const auditActionKeys: Record<string, string> = {
   LEAVE_REQUESTED: "auditLeaveRequested",
   LEAVE_CANCELLED: "auditLeaveCancelled",
   LEAVE_RESOLVED: "auditLeaveResolved",
+  WORKWEEK_TEMPLATE_UPDATED: "auditWorkweekTemplateUpdated",
+  WORKWEEK_TEMPLATE_APPLIED: "auditWorkweekTemplateApplied",
 };
 const auditEntityKeys: Record<string, string> = {
   USER: "user",

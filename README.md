@@ -40,7 +40,7 @@ secured Node API and PostgreSQL database.
 - Nginx SPA hosting and same-origin API proxy in production
 - Unit tests, dependency update automation, and a GitHub Actions verification workflow
 - Vendor-neutral biometric, face-terminal, kiosk, and turnstile event ingestion with hashed device keys, liveness enforcement, identity mapping, and idempotency
-- Availability, employee shift swaps with acceptance and manager approval, and recurring schedule materialization
+- Availability, employee shift swaps with acceptance and manager approval, company-wide workweek defaults by department/location, and recurring schedule materialization
 - Advanced payroll rules for overtime, night and holiday premiums, dated rates, benefits, pension deductions, employer contributions, and calculation breakdowns
 - Scheduled CSV/JSON reports plus server-generated attendance, payroll, accounting, and audit exports
 - Locale-aware API errors in English, Uzbek, and Russian
@@ -153,6 +153,7 @@ and the rate-limited password-recovery endpoints.
 - `POST /api/employees/:id/account`
 - `GET|POST /api/shifts`, `PATCH /api/shifts/:id`, `PATCH /api/shifts/:id/cancel`
 - `POST /api/shifts/copy-week`, `POST /api/shifts/publish`
+- `GET|PUT /api/workweek-template`, `POST /api/workweek-template/apply`
 - `GET /api/payroll`
 - `POST /api/payroll/periods`, `POST /api/payroll/periods/:id/approve-ready`,
   `POST /api/payroll/periods/:id/mark-paid`
