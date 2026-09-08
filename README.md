@@ -109,7 +109,9 @@ docker compose run --rm api npm run bootstrap:prod
 docker compose ps
 ```
 
-Open `http://your-server:8080` (or `PUBLIC_PORT`). Sign in using
+Open `https://brandfaces.uz`. The browser calls the production API at
+`https://api.brandfaces.uz/api`; see `docs/DEPLOYMENT.md` for DNS and TLS proxy
+setup. Sign in using
 `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`, then rotate that initial password
 before onboarding the team. Keep `RUN_SEED=false` in production; the seed is demo
 data, while `bootstrap:prod` creates only the company and first administrator.

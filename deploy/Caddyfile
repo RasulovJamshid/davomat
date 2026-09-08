@@ -1,0 +1,9 @@
+brandfaces.uz, www.brandfaces.uz {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8080
+}
+
+api.brandfaces.uz {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:4000
+}

@@ -2,15 +2,26 @@
 
 ## Environment
 
-Create `.env` beside `compose.yml`. Use long, unique values for
+The production web application is published at `https://brandfaces.uz` and the
+REST API at `https://api.brandfaces.uz/api`. Create `.env` beside `compose.yml`.
+Use long, unique values for
 `POSTGRES_PASSWORD`, `JWT_SECRET`, and `SEED_ADMIN_PASSWORD`. `JWT_SECRET` must be
 at least 32 characters. Set `CORS_ORIGINS` to the exact HTTPS origin users will
-open, and restrict the host firewall to the selected `PUBLIC_PORT`.
+open. Keep both `PUBLIC_PORT` and `API_PUBLIC_PORT` bound to loopback as defined
+in Compose; only ports 80 and 443 on the TLS proxy should be public.
 
 Set `APP_PUBLIC_URL` to that same public HTTPS origin. Configure `SMTP_URL` and
 `EMAIL_FROM` for employee invitations and password-reset links. Without SMTP,
 development writes mail contents to the API log; production deliberately reports
 delivery as unavailable and never exposes reset tokens in an HTTP response.
+
+The included `deploy/Caddyfile` terminates TLS and forwards the two domains to
+the loopback-only Docker ports. Create DNS `A`/`AAAA` records for
+`brandfaces.uz`, `www.brandfaces.uz`, and `api.brandfaces.uz` pointing to the
+deployment server, install Caddy, and place the file at `/etc/caddy/Caddyfile`.
+The production Compose file exposes the web service on `127.0.0.1:8080` and the
+API on `127.0.0.1:4000`; neither service should be opened directly in the public
+firewall.
 
 Do not enable `RUN_SEED` in production. It loads representative demo employees,
 shifts, punches, exceptions, and payroll. Use the one-time bootstrap command from
@@ -31,6 +42,9 @@ a separate policy extension when required.
 ```bash
 docker compose ps
 curl --fail http://127.0.0.1:8080/healthz
+curl --fail http://127.0.0.1:4000/health
+curl --fail https://brandfaces.uz/healthz
+curl --fail https://api.brandfaces.uz/health
 ```
 
 The API container separately checks `/health`, including database connectivity.

@@ -34,20 +34,22 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://brandfaces.uz,https://www.brandfaces.uz}
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
       RUN_SEED: ${RUN_SEED:-false}
-      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@atlas.local}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@brandfaces.uz}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-ChangeMe123!}
-      BOOTSTRAP_COMPANY_NAME: ${BOOTSTRAP_COMPANY_NAME:-Atlas Company}
+      BOOTSTRAP_COMPANY_NAME: ${BOOTSTRAP_COMPANY_NAME:-Brandfaces}
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost:8080}
-      EMAIL_FROM: ${EMAIL_FROM:-Atlas Workforce <no-reply@atlas.local>}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-https://brandfaces.uz}
+      EMAIL_FROM: ${EMAIL_FROM:-Davomat <no-reply@brandfaces.uz>}
       SMTP_URL: ${SMTP_URL:-}
       TZ: Asia/Tashkent
     depends_on:
       db:
         condition: service_healthy
+    ports:
+      - "127.0.0.1:${API_PUBLIC_PORT:-4000}:4000"
     networks: [backend]
 
   web:
@@ -56,10 +58,10 @@ services:
       dockerfile: docker/web.Dockerfile
       target: production
       args:
-        VITE_API_URL: /api
+        VITE_API_URL: ${VITE_API_URL:-https://api.brandfaces.uz/api}
     restart: unless-stopped
     ports:
-      - "${PUBLIC_PORT:-8080}:80"
+      - "127.0.0.1:${PUBLIC_PORT:-8080}:80"
     depends_on:
       api:
         condition: service_healthy
