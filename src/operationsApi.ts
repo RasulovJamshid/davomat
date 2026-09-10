@@ -37,6 +37,7 @@ interface AttendanceApiRow {
   clockOut: string | null;
   source: AttendanceUiSource | null;
   withinGeofence: boolean | null;
+  clockOutWithinGeofence?: boolean | null;
   status: AttendanceUiStatus;
 }
 
@@ -125,6 +126,7 @@ export function mapAttendance(rows: AttendanceApiRow[]): EmployeeRow[] {
     status: row.status,
     source: row.source ?? "UNRECORDED",
     withinGeofence: row.withinGeofence,
+    clockOutWithinGeofence: row.clockOutWithinGeofence,
     tone: tones[index % tones.length],
   }));
 }

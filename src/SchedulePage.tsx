@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   Check,
@@ -131,6 +131,7 @@ function ShiftAssignment({
   const { t, locale } = useI18n();
   const [selected, setSelected] = useState(0);
   const [locationId, setLocationId] = useState(locations[0]?.id ?? "");
+  const [liveTrackingEnabled, setLiveTrackingEnabled] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const assign = async () => {
@@ -164,6 +165,7 @@ function ShiftAssignment({
         endsAt: end,
         unpaidBreakMinutes: template.label === "Closing" ? 60 : 60,
         graceMinutes: 5,
+        liveTrackingEnabled,
       });
       onCreated();
     } catch (reason) {
@@ -262,6 +264,17 @@ function ShiftAssignment({
             <ChevronDown size={16} />
           </div>
         </label>
+        <label className="form-check schedule-live-tracking">
+          <input
+            type="checkbox"
+            checked={liveTrackingEnabled}
+            onChange={(event) => setLiveTrackingEnabled(event.target.checked)}
+          />
+          <span>
+            <strong>{t("enableLiveTracking")}</strong>
+            <small>{t("liveTrackingScheduleHelp")}</small>
+          </span>
+        </label>
         {error && (
           <div className="schedule-error">
             <X size={15} />
@@ -310,6 +323,9 @@ function ShiftEditor({
     String(shift.unpaidBreakMinutes),
   );
   const [graceMinutes, setGraceMinutes] = useState(String(shift.graceMinutes));
+  const [liveTrackingEnabled, setLiveTrackingEnabled] = useState(
+    shift.liveTrackingEnabled,
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const save = async () => {
@@ -326,6 +342,7 @@ function ShiftEditor({
         ),
         unpaidBreakMinutes: Number(breakMinutes),
         graceMinutes: Number(graceMinutes),
+        liveTrackingEnabled,
       });
       onSaved(t("shiftUpdatedDraft"));
     } catch (reason) {
@@ -440,6 +457,17 @@ function ShiftEditor({
               onChange={(event) => setGraceMinutes(event.target.value)}
             />
           </label>
+          <label className="form-check schedule-live-tracking">
+            <input
+              type="checkbox"
+              checked={liveTrackingEnabled}
+              onChange={(event) => setLiveTrackingEnabled(event.target.checked)}
+            />
+            <span>
+              <strong>{t("enableLiveTracking")}</strong>
+              <small>{t("liveTrackingScheduleHelp")}</small>
+            </span>
+          </label>
         </div>
         <p className="modal-intro">{t("revisionDraft")}</p>
         {error && (
@@ -478,7 +506,11 @@ function ShiftEditor({
   );
 }
 
-export function SchedulePage() {
+export function SchedulePage({
+  initialEmployeeId,
+}: {
+  initialEmployeeId?: string;
+}) {
   const { t, locale } = useI18n();
   const [weekStart, setWeekStart] = useState(() =>
     mondayOfWeek(tashkentDate()),
@@ -487,6 +519,11 @@ export function SchedulePage() {
   const [locations, setLocations] = useState<ApiLocation[]>([]);
   const [shifts, setShifts] = useState<ApiShift[]>([]);
   const [query, setQuery] = useState("");
+  const [employeeFilter, setEmployeeFilter] = useState(initialEmployeeId ?? "");
+  useEffect(
+    () => setEmployeeFilter(initialEmployeeId ?? ""),
+    [initialEmployeeId],
+  );
   const [locationFilter, setLocationFilter] = useState("ALL");
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [selection, setSelection] = useState<{
@@ -497,6 +534,19 @@ export function SchedulePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
+  const [action, setAction] = useState<"copy" | "publish" | null>(null);
+  const actionLock = useRef(false);
+  const loadSequence = useRef(0);
+  const currentWeek = mondayOfWeek(tashkentDate());
+  const hasFilters = Boolean(
+    employeeFilter || query || locationFilter !== "ALL" || roleFilter !== "ALL",
+  );
+  const clearFilters = () => {
+    setQuery("");
+    setEmployeeFilter("");
+    setLocationFilter("ALL");
+    setRoleFilter("ALL");
+  };
   const weekEnd = addDateDays(weekStart, 6);
   const toExclusive = addDateDays(weekStart, 7);
   const days = useMemo<Day[]>(
@@ -518,23 +568,33 @@ export function SchedulePage() {
     [weekStart, locale],
   );
   const load = () => {
+    const sequence = ++loadSequence.current;
     setLoading(true);
     setError("");
-    fetchSchedule(weekStart, toExclusive)
+    return fetchSchedule(weekStart, toExclusive)
       .then((data) => {
+        if (sequence !== loadSequence.current) return;
         setEmployees(data.employees);
         setLocations(data.meta.locations);
         setShifts(data.shifts.filter((shift) => shift.status !== "CANCELLED"));
         scheduleTimeZone = data.timeZone;
       })
-      .catch((reason) =>
+      .catch((reason) => {
+        if (sequence !== loadSequence.current) return;
         setError(
           reason instanceof Error ? reason.message : t("loadScheduleFailed"),
-        ),
-      )
-      .finally(() => setLoading(false));
+        );
+      })
+      .finally(() => {
+        if (sequence === loadSequence.current) setLoading(false);
+      });
   };
-  useEffect(load, [weekStart]);
+  useEffect(() => {
+    void load();
+    return () => {
+      ++loadSequence.current;
+    };
+  }, [weekStart]);
   const people = useMemo(() => employees.map(employeeView), [employees]);
   const roles = useMemo(
     () => [...new Set(people.map((employee) => employee.role))].sort(),
@@ -544,6 +604,7 @@ export function SchedulePage() {
     () =>
       people.filter(
         (employee) =>
+          (!employeeFilter || employee.id === employeeFilter) &&
           `${employee.name} ${employee.role}`
             .toLowerCase()
             .includes(query.toLowerCase()) &&
@@ -555,7 +616,7 @@ export function SchedulePage() {
                 shift.locationId === locationFilter,
             )),
       ),
-    [locationFilter, people, query, roleFilter, shifts],
+    [employeeFilter, locationFilter, people, query, roleFilter, shifts],
   );
   const byCell = useMemo(() => {
     const result: Record<string, ApiShift[]> = {};
@@ -568,16 +629,26 @@ export function SchedulePage() {
   }, [shifts]);
   const scheduledPeople = new Set(shifts.map((shift) => shift.employeeId));
   const coverage = employees.length
-    ? Math.round((scheduledPeople.size / employees.length) * 100)
+    ? Math.round(
+        (employees.filter((employee) => scheduledPeople.has(employee.id))
+          .length /
+          employees.length) *
+          100,
+      )
     : 0;
   const gaps = people.filter((employee) => !scheduledPeople.has(employee.id));
-  const hasDraft = shifts.some((shift) => shift.status === "DRAFT");
+  const draftCount = shifts.filter((shift) => shift.status === "DRAFT").length;
+  const hasDraft = draftCount > 0;
   const notify = (message: string) => {
     setToast(message);
     window.setTimeout(() => setToast(""), 2400);
   };
   const cancel = (shift: ApiShift) => setSelectedShift(shift);
   const publish = async () => {
+    if (actionLock.current || loading || !hasDraft) return;
+    actionLock.current = true;
+    setAction("publish");
+    setError("");
     try {
       const result = await publishSchedule(weekStart, weekEnd);
       notify(
@@ -585,14 +656,21 @@ export function SchedulePage() {
           ? t("shiftsPublished", { count: result.published })
           : t("scheduleAlreadyPublished"),
       );
-      load();
+      await load();
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : t("publishScheduleFailed"),
       );
+    } finally {
+      actionLock.current = false;
+      setAction(null);
     }
   };
   const copyPrevious = async () => {
+    if (actionLock.current || loading) return;
+    actionLock.current = true;
+    setAction("copy");
+    setError("");
     try {
       const result = await copyScheduleWeek(
         addDateDays(weekStart, -7),
@@ -603,11 +681,14 @@ export function SchedulePage() {
           ? t("shiftsCopiedDraft", { count: result.copied })
           : t("noShiftsToCopy"),
       );
-      load();
+      await load();
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : t("copyScheduleFailed"),
       );
+    } finally {
+      actionLock.current = false;
+      setAction(null);
     }
   };
   const rangeLabel = `${new Intl.DateTimeFormat(intlLocale(locale), { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${weekStart}T00:00:00Z`))} – ${new Intl.DateTimeFormat(intlLocale(locale), { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${weekEnd}T00:00:00Z`))}`;
@@ -620,20 +701,45 @@ export function SchedulePage() {
           <p>{t("scheduleDescription")}</p>
         </div>
         <div className="schedule-heading-actions">
-          <button className="secondary-button" onClick={copyPrevious}>
+          <button
+            className="secondary-button"
+            onClick={copyPrevious}
+            disabled={loading || action !== null}
+          >
             <Copy size={16} />
-            {t("copyPreviousWeek")}
+            {t(action === "copy" ? "copyingSchedule" : "copyPreviousWeek")}
           </button>
           <button
             className="primary-button"
             onClick={publish}
-            disabled={!hasDraft}
+            disabled={loading || !hasDraft || action !== null}
           >
             <Send size={16} />
-            {hasDraft ? t("publishSchedule") : t("published")}
+            {t(
+              action === "publish"
+                ? "publishingSchedule"
+                : hasDraft || !shifts.length
+                  ? "publishSchedule"
+                  : "published",
+            )}
           </button>
         </div>
       </div>
+      {!loading && (
+        <div className="workflow-hint" role="status">
+          <CalendarDays size={18} aria-hidden="true" />
+          <span>
+            {t(
+              hasDraft
+                ? "scheduleDraftHint"
+                : shifts.length
+                  ? "schedulePublishedHint"
+                  : "scheduleStartHint",
+              { count: draftCount },
+            )}
+          </span>
+        </div>
+      )}
       {error && (
         <div className="operations-error">
           <X size={17} />
@@ -663,6 +769,7 @@ export function SchedulePage() {
         <div className="week-navigator">
           <button
             aria-label={t("previousWeek")}
+            disabled={action !== null}
             onClick={() => setWeekStart(addDateDays(weekStart, -7))}
           >
             <ChevronLeft size={17} />
@@ -673,11 +780,19 @@ export function SchedulePage() {
           </div>
           <button
             aria-label={t("nextWeek")}
+            disabled={action !== null}
             onClick={() => setWeekStart(addDateDays(weekStart, 7))}
           >
             <ChevronRight size={17} />
           </button>
         </div>
+        <button
+          className="secondary-button"
+          disabled={weekStart === currentWeek || action !== null}
+          onClick={() => setWeekStart(currentWeek)}
+        >
+          {t("thisWeek")}
+        </button>
         <label className="workspace-search">
           <Search size={17} />
           <input
@@ -715,6 +830,19 @@ export function SchedulePage() {
           <ChevronDown size={15} />
         </label>
       </div>
+      {hasFilters && (
+        <div className="filter-summary">
+          <span role="status">
+            {t("showingTeamMembers", {
+              shown: filteredEmployees.length,
+              total: employees.length,
+            })}
+          </span>
+          <button className="text-button" onClick={clearFilters}>
+            {t("clearFilters")}
+          </button>
+        </div>
+      )}
       <div className="schedule-layout">
         <section className="panel schedule-grid-panel">
           <div className="schedule-scroll">
@@ -730,6 +858,20 @@ export function SchedulePage() {
             {loading ? (
               <div className="schedule-loading">
                 {t("loadingWeeklySchedule")}
+              </div>
+            ) : filteredEmployees.length === 0 ? (
+              <div className="workflow-empty">
+                <Search size={24} aria-hidden="true" />
+                <strong>
+                  {t(hasFilters ? "noMatchingEmployees" : "noTeamToSchedule")}
+                </strong>
+                <p>
+                  {t(
+                    hasFilters
+                      ? "adjustFiltersHint"
+                      : "addPeopleBeforeSchedule",
+                  )}
+                </p>
               </div>
             ) : (
               filteredEmployees.map((employee) => (
@@ -754,6 +896,8 @@ export function SchedulePage() {
                         {assigned.length === 0 ? (
                           <button
                             className="add-shift"
+                            disabled={action !== null}
+                            aria-label={`${t("addShift")} · ${employee.name} · ${day.dateKey}`}
                             onClick={() => setSelection({ employee, day })}
                           >
                             <Plus size={15} />
@@ -764,6 +908,7 @@ export function SchedulePage() {
                             {assigned.map((item) => (
                               <button
                                 title={t("editShiftAction")}
+                                disabled={action !== null}
                                 className={`shift-block ${item.status === "DRAFT" ? "amber" : "sage"}`}
                                 key={item.id}
                                 onClick={() => setSelectedShift(item)}
@@ -782,6 +927,7 @@ export function SchedulePage() {
                             ))}
                             <button
                               className="add-shift compact"
+                              disabled={action !== null}
                               onClick={() => setSelection({ employee, day })}
                             >
                               <Plus size={13} />
@@ -833,8 +979,8 @@ export function SchedulePage() {
               <div className="all-clear compact">
                 <span>
                   <Check size={20} />
-                  <strong>{t("everyoneCovered")}</strong>
                 </span>
+                <strong>{t("everyoneCovered")}</strong>
               </div>
             )}
           </div>
@@ -868,7 +1014,7 @@ export function SchedulePage() {
           }}
         />
       )}
-      <div className={`toast ${toast ? "visible" : ""}`}>
+      <div className={`toast ${toast ? "visible" : ""}`} role="status">
         <Check size={17} />
         {toast}
       </div>

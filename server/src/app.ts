@@ -13,17 +13,40 @@ export function createApp() {
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", 1);
-  app.use(pinoHttp({ logger, autoLogging: { ignore: (request) => request.url === "/health" } }));
+  app.use(
+    pinoHttp({
+      logger,
+      autoLogging: { ignore: (request) => request.url === "/health" },
+    }),
+  );
   app.use(helmet());
   app.use(cors({ origin: config.corsOrigins, credentials: false }));
-  app.use(express.json({ limit: "1mb" }));
-  app.get("/live",(_request,response)=>response.json({status:"ok",service:"atlas-api",timestamp:new Date().toISOString()}));
+  app.use(express.json({ limit: "3mb" }));
+  app.get("/live", (_request, response) =>
+    response.json({
+      status: "ok",
+      service: "atlas-api",
+      timestamp: new Date().toISOString(),
+    }),
+  );
   app.get("/health", async (_request, response) => {
     try {
       await pool.query("SELECT 1");
-      response.json({ status: "ok", service: "atlas-api", database: "connected", timestamp: new Date().toISOString() });
+      response.json({
+        status: "ok",
+        service: "atlas-api",
+        database: "connected",
+        timestamp: new Date().toISOString(),
+      });
     } catch {
-      response.status(503).json({ status: "unavailable", service: "atlas-api", database: "disconnected", timestamp: new Date().toISOString() });
+      response
+        .status(503)
+        .json({
+          status: "unavailable",
+          service: "atlas-api",
+          database: "disconnected",
+          timestamp: new Date().toISOString(),
+        });
     }
   });
   app.use("/api/device", deviceRouter);

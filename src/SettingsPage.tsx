@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { lazy, Suspense, useEffect, useState, type FormEvent } from "react";
 import {
   Building2,
   Check,
@@ -30,6 +30,12 @@ import {
   type Integrations,
 } from "./workforceApi";
 import { intlLocale, LanguageSwitcher, useI18n } from "./i18n";
+
+const LocationMapPicker = lazy(() =>
+  import("./LocationMapPicker").then((module) => ({
+    default: module.LocationMapPicker,
+  })),
+);
 
 const auditActionKeys: Record<string, string> = {
   PASSWORD_RESET: "auditPasswordReset",
@@ -64,6 +70,7 @@ const auditActionKeys: Record<string, string> = {
   LEAVE_RESOLVED: "auditLeaveResolved",
   WORKWEEK_TEMPLATE_UPDATED: "auditWorkweekTemplateUpdated",
   WORKWEEK_TEMPLATE_APPLIED: "auditWorkweekTemplateApplied",
+  MOBILE_DEVICE_RESET: "auditMobileDeviceReset",
 };
 const auditEntityKeys: Record<string, string> = {
   USER: "user",
@@ -257,8 +264,8 @@ export function SettingsPage({
       location.latitude === "" ? null : Number(location.latitude);
     const longitude =
       location.longitude === "" ? null : Number(location.longitude);
-    if ((latitude === null) !== (longitude === null))
-      return setSetupError(t("coordinatesTogether"));
+    if (latitude === null || longitude === null)
+      return setSetupError(t("selectLocationOnMapRequired"));
     setSavingSetup(true);
     setSetupError("");
     try {
@@ -366,8 +373,31 @@ export function SettingsPage({
           <button onClick={() => setSetupError("")}>{t("dismiss")}</button>
         </div>
       )}
+      <nav className="settings-jump-nav" aria-label={t("settingsSections")}>
+        {[
+          ["settings-account", t("yourAccount")],
+          ["settings-company", t("companyConfiguration")],
+          ["settings-departments", t("departments")],
+          ["settings-locations", t("workLocations")],
+          ["settings-activity", t("recentActivity")],
+          ["settings-integrations", t("integrationReadiness")],
+        ].map(([target, label]) => (
+          <button
+            key={target}
+            type="button"
+            onClick={() =>
+              document.getElementById(target)?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              })
+            }
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
       <div className="settings-grid">
-        <section className="panel settings-card">
+        <section className="panel settings-card" id="settings-account">
           <div className="settings-card-heading">
             <span>
               <UserRound size={19} />
@@ -452,7 +482,11 @@ export function SettingsPage({
           </button>
         </form>
       </div>
-      <form className="panel settings-company-form" onSubmit={saveCompany}>
+      <form
+        className="panel settings-company-form"
+        id="settings-company"
+        onSubmit={saveCompany}
+      >
         <div className="settings-card-heading">
           <span>
             <Building2 size={19} />
@@ -563,7 +597,7 @@ export function SettingsPage({
         </div>
       </form>
       <div className="settings-organization-grid">
-        <section className="panel settings-card">
+        <section className="panel settings-card" id="settings-departments">
           <div className="settings-card-heading">
             <span>
               <UsersRound size={19} />
@@ -627,7 +661,7 @@ export function SettingsPage({
             </button>
           </form>
         </section>
-        <section className="panel settings-card">
+        <section className="panel settings-card" id="settings-locations">
           <div className="settings-card-heading">
             <span>
               <MapPin size={19} />
@@ -697,7 +731,7 @@ export function SettingsPage({
             <h2>
               {editingLocationId ? t("editWorkLocation") : t("addWorkLocation")}
             </h2>
-            <p>{t("coordinatesOptional")}</p>
+            <p>{t("selectLocationOnMapDescription")}</p>
           </div>
         </div>
         <div className="location-form-grid">
@@ -727,38 +761,26 @@ export function SettingsPage({
               }
             />
           </label>
-          <label className="form-field">
-            <span>{t("latitude")}</span>
-            <input
-              type="number"
-              min={-90}
-              max={90}
-              step="any"
-              value={location.latitude}
-              onChange={(event) =>
+          <Suspense
+            fallback={<div className="location-map">{t("loading")}</div>}
+          >
+            <LocationMapPicker
+              latitude={
+                location.latitude === "" ? null : Number(location.latitude)
+              }
+              longitude={
+                location.longitude === "" ? null : Number(location.longitude)
+              }
+              radius={Number(location.geofenceRadiusM) || 150}
+              onChange={(latitude, longitude) =>
                 setLocation((current) => ({
                   ...current,
-                  latitude: event.target.value,
+                  latitude: String(latitude),
+                  longitude: String(longitude),
                 }))
               }
             />
-          </label>
-          <label className="form-field">
-            <span>{t("longitude")}</span>
-            <input
-              type="number"
-              min={-180}
-              max={180}
-              step="any"
-              value={location.longitude}
-              onChange={(event) =>
-                setLocation((current) => ({
-                  ...current,
-                  longitude: event.target.value,
-                }))
-              }
-            />
-          </label>
+          </Suspense>
           <label className="form-field">
             <span>{t("geofenceRadius")}</span>
             <input
@@ -799,7 +821,10 @@ export function SettingsPage({
           )}
         </div>
       </form>
-      <section className="panel settings-card audit-card">
+      <section
+        className="panel settings-card audit-card"
+        id="settings-activity"
+      >
         <div className="settings-card-heading">
           <span>
             <History size={19} />
@@ -833,7 +858,10 @@ export function SettingsPage({
           )}
         </div>
       </section>
-      <section className="panel settings-card integration-card">
+      <section
+        className="panel settings-card integration-card"
+        id="settings-integrations"
+      >
         <div className="settings-card-heading">
           <span>
             <Send size={19} />

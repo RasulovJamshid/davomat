@@ -1250,7 +1250,7 @@ Object.assign(en, {
   showingEmployees: "Showing {shown} of {total} employees",
   viewAllAttendance: "View all attendance",
   tryAgain: "Try again",
-  openingAtlas: "Opening Atlas…",
+  openingAtlas: "Opening davomat…",
   openTodayAttendance: "Open today’s attendance",
   temporaryPasswordRequired: "Change your temporary password",
   temporaryPasswordIntro:
@@ -1359,7 +1359,7 @@ Object.assign(uz, {
   showingEmployees: "{total} xodimdan {shown} tasi ko‘rsatilmoqda",
   viewAllAttendance: "Barcha davomatni ko‘rish",
   tryAgain: "Qayta urinish",
-  openingAtlas: "Atlas ochilmoqda…",
+  openingAtlas: "davomat ochilmoqda…",
   openTodayAttendance: "Bugungi davomatni ochish",
   temporaryPasswordRequired: "Vaqtinchalik parolni almashtiring",
   temporaryPasswordIntro:
@@ -1470,7 +1470,7 @@ Object.assign(ru, {
   showingEmployees: "Показано {shown} из {total} сотрудников",
   viewAllAttendance: "Вся посещаемость",
   tryAgain: "Повторить",
-  openingAtlas: "Открытие Atlas…",
+  openingAtlas: "Открытие davomat…",
   openTodayAttendance: "Открыть посещаемость за сегодня",
   temporaryPasswordRequired: "Измените временный пароль",
   temporaryPasswordIntro:
@@ -2638,6 +2638,29 @@ Object.assign(en, {
   individualRecurringSchedule: "Individual recurring schedule",
   auditWorkweekTemplateUpdated: "Company workweek updated",
   auditWorkweekTemplateApplied: "Company workweek applied",
+  selectLocationOnMap: "Organization location on map",
+  clickMapToPlaceLocation: "Click the exact entrance or workplace position.",
+  useCurrentLocation: "Use my location",
+  locationNotSelected: "No map position selected",
+  selectLocationOnMapDescription:
+    "Select the workplace on the map and preview its geofence.",
+  selectLocationOnMapRequired: "Select the workplace position on the map.",
+  loading: "Loading…",
+  mobileSelfieRequired:
+    "Attendance can only be recorded in the mobile app with a new selfie and precise location.",
+  viewAttendanceSelfie: "View selfie",
+  attendanceSelfie: "Attendance verification selfie",
+  loadSelfieFailed: "Could not load attendance selfie",
+  linkedMobileDevice: "Linked mobile device",
+  lastVerifiedAt: "Last verified: {date}",
+  resetMobileDevice: "Reset linked device",
+  resetMobileDeviceConfirm:
+    "Allow this employee to bind a different phone? The current phone will immediately stop working.",
+  mobileDeviceReset: "The linked device was reset.",
+  mobileDeviceResetFailed: "Could not reset the linked device",
+  noLinkedMobileDevice:
+    "No phone has been linked. The first mobile sign-in will bind one.",
+  auditMobileDeviceReset: "Employee mobile device reset",
 });
 Object.assign(uz, {
   companyWorkweek: "Kompaniya ish haftasi",
@@ -2666,6 +2689,29 @@ Object.assign(uz, {
   individualRecurringSchedule: "Xodim uchun takroriy jadval",
   auditWorkweekTemplateUpdated: "Kompaniya ish haftasi yangilandi",
   auditWorkweekTemplateApplied: "Kompaniya ish haftasi qo‘llandi",
+  selectLocationOnMap: "Tashkilot manzili xaritada",
+  clickMapToPlaceLocation: "Aniq kirish joyi yoki ish nuqtasini bosing.",
+  useCurrentLocation: "Mening joylashuvim",
+  locationNotSelected: "Xaritada joy tanlanmagan",
+  selectLocationOnMapDescription:
+    "Ish joyini xaritada tanlang va geozonani ko‘ring.",
+  selectLocationOnMapRequired: "Ish joyini xaritada tanlang.",
+  loading: "Yuklanmoqda…",
+  mobileSelfieRequired:
+    "Davomat faqat mobil ilovada yangi selfi va aniq joylashuv bilan qayd etiladi.",
+  viewAttendanceSelfie: "Selfini ko‘rish",
+  attendanceSelfie: "Davomatni tasdiqlash selfisi",
+  loadSelfieFailed: "Davomat selfisini yuklab bo‘lmadi",
+  linkedMobileDevice: "Bog‘langan mobil qurilma",
+  lastVerifiedAt: "Oxirgi tasdiq: {date}",
+  resetMobileDevice: "Bog‘langan qurilmani tiklash",
+  resetMobileDeviceConfirm:
+    "Xodimga boshqa telefonni bog‘lashga ruxsat berilsinmi? Joriy telefon darhol ishlamaydi.",
+  mobileDeviceReset: "Bog‘langan qurilma tiklandi.",
+  mobileDeviceResetFailed: "Bog‘langan qurilmani tiklab bo‘lmadi",
+  noLinkedMobileDevice:
+    "Telefon bog‘lanmagan. Birinchi mobil kirishda telefon bog‘lanadi.",
+  auditMobileDeviceReset: "Xodimning mobil qurilmasi tiklandi",
 });
 Object.assign(ru, {
   companyWorkweek: "Рабочая неделя компании",
@@ -2694,8 +2740,282 @@ Object.assign(ru, {
   individualRecurringSchedule: "Индивидуальный повторяющийся график",
   auditWorkweekTemplateUpdated: "Рабочая неделя компании изменена",
   auditWorkweekTemplateApplied: "Рабочая неделя компании применена",
+  selectLocationOnMap: "Адрес организации на карте",
+  clickMapToPlaceLocation: "Нажмите точное место входа или рабочего объекта.",
+  useCurrentLocation: "Мое местоположение",
+  locationNotSelected: "Точка на карте не выбрана",
+  selectLocationOnMapDescription:
+    "Выберите рабочее место на карте и проверьте геозону.",
+  selectLocationOnMapRequired: "Выберите рабочее место на карте.",
+  loading: "Загрузка…",
+  mobileSelfieRequired:
+    "Посещаемость можно отмечать только в мобильном приложении с новым селфи и точной геолокацией.",
+  viewAttendanceSelfie: "Посмотреть селфи",
+  attendanceSelfie: "Селфи подтверждения посещаемости",
+  loadSelfieFailed: "Не удалось загрузить селфи посещаемости",
+  linkedMobileDevice: "Привязанное мобильное устройство",
+  lastVerifiedAt: "Последняя проверка: {date}",
+  resetMobileDevice: "Сбросить привязанное устройство",
+  resetMobileDeviceConfirm:
+    "Разрешить сотруднику привязать другой телефон? Текущий телефон сразу перестанет работать.",
+  mobileDeviceReset: "Привязанное устройство сброшено.",
+  mobileDeviceResetFailed: "Не удалось сбросить привязанное устройство",
+  noLinkedMobileDevice:
+    "Телефон не привязан. Он будет привязан при первом входе в мобильное приложение.",
+  auditMobileDeviceReset: "Мобильное устройство сотрудника сброшено",
 });
 
+Object.assign(en, {
+  enableLiveTracking: "Enable live location for this shift",
+  liveTrackingScheduleHelp:
+    "Location is shared only while this published shift is active.",
+  liveMap: "Live map",
+  liveLocations: "Live locations",
+  liveLocationsDescription:
+    "Employees whose current schedules explicitly allow live location.",
+  loadLiveLocationsFailed: "Could not load live locations",
+  updatedAt: "Updated",
+  waitingForLocation: "Waiting for the employee's device",
+  mapRefreshedAt: "Map refreshed at {time}",
+  noLiveTrackingNow: "No live-tracked shifts right now",
+  enableTrackingFromSchedule:
+    "Enable live location when assigning or editing a shift.",
+  locationStale: "Last update {time} · signal is stale",
+  locationCurrent: "Live · updated {time}",
+});
+Object.assign(uz, {
+  enableLiveTracking: "Bu smena uchun jonli joylashuvni yoqish",
+  liveTrackingScheduleHelp:
+    "Joylashuv faqat e'lon qilingan smena faol paytda ulashiladi.",
+  liveMap: "Jonli xarita",
+  liveLocations: "Jonli joylashuvlar",
+  liveLocationsDescription:
+    "Jadvalida jonli joylashuvga aniq ruxsat berilgan xodimlar.",
+  loadLiveLocationsFailed: "Jonli joylashuvlarni yuklab bo'lmadi",
+  updatedAt: "Yangilandi",
+  waitingForLocation: "Xodim qurilmasidan joylashuv kutilmoqda",
+  mapRefreshedAt: "Xarita {time} da yangilandi",
+  noLiveTrackingNow: "Hozir jonli kuzatiladigan smena yo'q",
+  enableTrackingFromSchedule:
+    "Smenani yaratish yoki tahrirlashda jonli joylashuvni yoqing.",
+  locationStale: "Oxirgi yangilanish {time} · signal eskirgan",
+  locationCurrent: "Jonli · {time} da yangilandi",
+});
+Object.assign(ru, {
+  enableLiveTracking: "Включить геолокацию для этой смены",
+  liveTrackingScheduleHelp:
+    "Геолокация передается только во время активной опубликованной смены.",
+  liveMap: "Карта онлайн",
+  liveLocations: "Геолокация сотрудников",
+  liveLocationsDescription:
+    "Сотрудники, для текущих смен которых явно разрешена геолокация.",
+  loadLiveLocationsFailed: "Не удалось загрузить геолокацию",
+  updatedAt: "Обновлено",
+  waitingForLocation: "Ожидание данных с устройства сотрудника",
+  mapRefreshedAt: "Карта обновлена в {time}",
+  noLiveTrackingNow: "Сейчас нет смен с геолокацией",
+  enableTrackingFromSchedule:
+    "Включите геолокацию при создании или изменении смены.",
+  locationStale: "Последнее обновление {time} · сигнал устарел",
+  locationCurrent: "Онлайн · обновлено в {time}",
+});
+
+Object.assign(en, {
+  dailyWork: "Daily work",
+  management: "Management",
+  configuration: "Configuration",
+  goTo: "Go to",
+  goToWorkspace: "Go to workspace",
+  quickNavigation: "Quick navigation",
+  more: "More",
+  settingsSections: "Settings sections",
+  advancedSections: "Advanced operation sections",
+});
+Object.assign(uz, {
+  dailyWork: "Kundalik ish",
+  management: "Boshqaruv",
+  configuration: "Sozlash",
+  goTo: "Bo‘lim",
+  goToWorkspace: "Ish bo‘limiga o‘tish",
+  quickNavigation: "Tezkor navigatsiya",
+  more: "Boshqa",
+  settingsSections: "Sozlamalar bo‘limlari",
+  advancedSections: "Kengaytirilgan boshqaruv bo‘limlari",
+});
+Object.assign(ru, {
+  dailyWork: "Ежедневная работа",
+  management: "Управление",
+  configuration: "Настройка",
+  goTo: "Перейти",
+  goToWorkspace: "Перейти в раздел",
+  quickNavigation: "Быстрая навигация",
+  more: "Ещё",
+  settingsSections: "Разделы настроек",
+  advancedSections: "Разделы расширенного управления",
+});
+
+Object.assign(en, {
+  clearFilters: "Clear filters",
+  noMatchingEmployees: "No employees match these filters",
+  adjustFiltersHint:
+    "Change your search or clear the filters to see your team.",
+  noAttendanceForDate: "No attendance records for this date",
+  chooseAttendanceDate: "Choose another date above to find attendance records.",
+  thisWeek: "This week",
+  copyingSchedule: "Copying…",
+  publishingSchedule: "Publishing…",
+  scheduleDraftHint:
+    "{count} draft shifts. Review them, then publish to share with employees.",
+  schedulePublishedHint:
+    "These shifts are published and visible to employees. Select a shift to edit it.",
+  scheduleStartHint:
+    "Add a shift in an employee’s row, or copy last week to get started.",
+  noTeamToSchedule: "No employees to schedule yet",
+  addPeopleBeforeSchedule:
+    "Add employees in People, then return here to assign shifts.",
+});
+Object.assign(uz, {
+  clearFilters: "Filtrlarni tozalash",
+  noMatchingEmployees: "Bu filtrlarga mos xodimlar yo‘q",
+  adjustFiltersHint:
+    "Jamoani ko‘rish uchun qidiruvni o‘zgartiring yoki filtrlarni tozalang.",
+  noAttendanceForDate: "Bu sana uchun davomat yozuvlari yo‘q",
+  chooseAttendanceDate:
+    "Davomat yozuvlarini topish uchun yuqoridan boshqa sanani tanlang.",
+  thisWeek: "Joriy hafta",
+  copyingSchedule: "Nusxalanmoqda…",
+  publishingSchedule: "E’lon qilinmoqda…",
+  scheduleDraftHint:
+    "{count} ta qoralama smena. Tekshiring va xodimlarga ko‘rsatish uchun e’lon qiling.",
+  schedulePublishedHint:
+    "Bu smenalar e’lon qilingan va xodimlarga ko‘rinadi. Tahrirlash uchun smenani tanlang.",
+  scheduleStartHint:
+    "Xodim qatoriga smena qo‘shing yoki oldingi haftadan nusxa oling.",
+  noTeamToSchedule: "Jadval tuzish uchun xodimlar hali yo‘q",
+  addPeopleBeforeSchedule:
+    "Xodimlar bo‘limida xodim qo‘shing, so‘ng smena belgilash uchun qayting.",
+});
+Object.assign(ru, {
+  clearFilters: "Сбросить фильтры",
+  noMatchingEmployees: "Нет сотрудников с такими фильтрами",
+  adjustFiltersHint:
+    "Измените запрос или сбросьте фильтры, чтобы увидеть команду.",
+  noAttendanceForDate: "За эту дату нет записей посещаемости",
+  chooseAttendanceDate: "Выберите другую дату выше, чтобы найти записи.",
+  thisWeek: "Эта неделя",
+  copyingSchedule: "Копирование…",
+  publishingSchedule: "Публикация…",
+  scheduleDraftHint:
+    "Черновых смен: {count}. Проверьте и опубликуйте их для сотрудников.",
+  schedulePublishedHint:
+    "Смены опубликованы и видны сотрудникам. Выберите смену для изменения.",
+  scheduleStartHint:
+    "Добавьте смену в строке сотрудника или скопируйте прошлую неделю.",
+  noTeamToSchedule: "Пока нет сотрудников для расписания",
+  addPeopleBeforeSchedule:
+    "Добавьте сотрудников в разделе «Сотрудники», затем вернитесь к расписанию.",
+});
+
+Object.assign(en, {
+  "livelocations": "Live locations",
+  "geofence_inside": "Inside workplace zone",
+  "geofence_outside": "Outside workplace zone",
+  "geofence_unknown": "Not verified",
+  "geofenceCheck": "Workplace zone",
+  "attendanceSourceHint": "How this attendance event was recorded.",
+  "geofenceRecordedHint": "Zone results reflect the check made when each event was recorded. Not verified means no geofence result was recorded, not that the employee was outside.",
+  "howToSeeLiveLocation": "How to see live locations",
+  "trackingStepSchedule": "1. Enable tracking on a shift",
+  "trackingStepScheduleHelp": "Open an employee’s shift in Schedule, enable live location tracking, save, and publish the schedule.",
+  "trackingStepPhone": "2. Prepare the employee’s phone",
+  "trackingStepPhoneHelp": "The employee must sign in to the mobile app on their linked device, enable location services and the requested location permissions, and have internet access.",
+  "trackingStepView": "3. Return during the shift",
+  "trackingStepViewHelp": "Only published, tracking-enabled shifts that are active now appear here. The map refreshes every 15 seconds; old positions are marked stale.",
+  "configureTracking": "Open schedule to set up",
+  "trackingActiveCount": "{count} active tracked shifts",
+  "trackingReceivingCount": "{count} current positions",
+  "trackingWaitingCount": "{count} waiting for phone",
+  "liveMapAccuracyHint": "Circles show GPS accuracy, not the workplace boundary. Attendance records show the workplace-zone check.",
+  "showAllOnMap": "Fit all positions",
+  "liveTrackingAvailabilityHint": "Check that the shift is published, live tracking is enabled, and its start time has passed. Future and finished shifts do not appear here.",
+  "waitingForPhoneHint": "Ask the employee to open the app and check location permission, GPS and internet. A scheduled shift alone does not send a position.",
+  "locateEmployee": "Locate on map",
+  "openEmployeeProfile": "Open employee",
+  "backToPeople": "Back to people",
+  "openEmployeeSchedule": "Manage schedule",
+  "contactDetails": "Contact & workplace",
+  "employeeAccessSummary": "Account & mobile device",
+  "manageEmployeeAccess": "Manage access & device",
+  "showAllEmployees": "Show all employees"
+});
+Object.assign(uz, {
+  "livelocations": "Jonli joylashuv",
+  "geofence_inside": "Ish hududi ichida",
+  "geofence_outside": "Ish hududidan tashqarida",
+  "geofence_unknown": "Tekshirilmagan",
+  "geofenceCheck": "Ish hududi",
+  "attendanceSourceHint": "Davomat qanday qayd etilgani.",
+  "geofenceRecordedHint": "Hudud natijasi har bir belgi qayd etilgan paytdagi tekshiruvni ko‘rsatadi. Tekshirilmagan — hudud natijasi yo‘q, xodim tashqarida degani emas.",
+  "howToSeeLiveLocation": "Jonli joylashuvni qanday ko‘rish mumkin",
+  "trackingStepSchedule": "1. Smenada kuzatuvni yoqing",
+  "trackingStepScheduleHelp": "Jadvalda xodim smenasini oching, jonli joylashuv kuzatuvini yoqing, saqlang va jadvalni e’lon qiling.",
+  "trackingStepPhone": "2. Xodim telefonini tayyorlang",
+  "trackingStepPhoneHelp": "Xodim biriktirilgan telefonda ilovaga kirishi, joylashuv xizmatlari va so‘ralgan ruxsatlarni yoqishi, internetga ulangan bo‘lishi kerak.",
+  "trackingStepView": "3. Smena vaqtida qayting",
+  "trackingStepViewHelp": "Faqat hozir davom etayotgan, e’lon qilingan va kuzatuvi yoqilgan smenalar ko‘rinadi. Xarita har 15 soniyada yangilanadi; eski nuqtalar belgilanadi.",
+  "configureTracking": "Sozlash uchun jadvalni ochish",
+  "trackingActiveCount": "{count} ta kuzatuvli faol smena",
+  "trackingReceivingCount": "{count} ta yangi joylashuv",
+  "trackingWaitingCount": "{count} ta telefondan ma’lumot kutilmoqda",
+  "liveMapAccuracyHint": "Doiralar ish hududi chegarasi emas, GPS aniqligini ko‘rsatadi. Hudud tekshiruvi davomat yozuvlarida.",
+  "showAllOnMap": "Barcha nuqtalarni ko‘rsatish",
+  "liveTrackingAvailabilityHint": "Smena e’lon qilingani, kuzatuv yoqilgani va boshlanish vaqti kelganini tekshiring. Kelajakdagi va tugagan smenalar bu yerda ko‘rinmaydi.",
+  "waitingForPhoneHint": "Xodimdan ilovani ochib, joylashuv ruxsati, GPS va internetni tekshirishni so‘rang. Smena belgilashning o‘zi joylashuv yubormaydi.",
+  "locateEmployee": "Xaritada ko‘rish",
+  "openEmployeeProfile": "Xodimni ochish",
+  "backToPeople": "Xodimlarga qaytish",
+  "openEmployeeSchedule": "Jadvalni boshqarish",
+  "contactDetails": "Aloqa va ish joyi",
+  "employeeAccessSummary": "Hisob va mobil qurilma",
+  "manageEmployeeAccess": "Kirish va qurilmani boshqarish",
+  "showAllEmployees": "Barcha xodimlarni ko‘rsatish"
+});
+Object.assign(ru, {
+  "livelocations": "Местоположение онлайн",
+  "geofence_inside": "В рабочей зоне",
+  "geofence_outside": "Вне рабочей зоны",
+  "geofence_unknown": "Не проверено",
+  "geofenceCheck": "Рабочая зона",
+  "attendanceSourceHint": "Способ регистрации отметки.",
+  "geofenceRecordedHint": "Результат проверки зоны относится к моменту отметки. «Не проверено» означает отсутствие результата, а не нахождение вне зоны.",
+  "howToSeeLiveLocation": "Как увидеть местоположение онлайн",
+  "trackingStepSchedule": "1. Включите отслеживание в смене",
+  "trackingStepScheduleHelp": "Откройте смену сотрудника в расписании, включите отслеживание, сохраните и опубликуйте расписание.",
+  "trackingStepPhone": "2. Подготовьте телефон сотрудника",
+  "trackingStepPhoneHelp": "Сотрудник должен войти в приложение на привязанном устройстве, включить геолокацию и запрошенные разрешения, подключиться к интернету.",
+  "trackingStepView": "3. Откройте карту во время смены",
+  "trackingStepViewHelp": "Здесь видны только текущие опубликованные смены с отслеживанием. Карта обновляется каждые 15 секунд; устаревшие позиции помечаются.",
+  "configureTracking": "Открыть расписание для настройки",
+  "trackingActiveCount": "Активных смен с отслеживанием: {count}",
+  "trackingReceivingCount": "Актуальных позиций: {count}",
+  "trackingWaitingCount": "Ожидают данные телефона: {count}",
+  "liveMapAccuracyHint": "Круги показывают точность GPS, а не границу рабочей зоны. Проверка зоны отображается в посещаемости.",
+  "showAllOnMap": "Показать все позиции",
+  "liveTrackingAvailabilityHint": "Проверьте, что смена опубликована, отслеживание включено и смена уже началась. Будущие и завершённые смены здесь не отображаются.",
+  "waitingForPhoneHint": "Попросите сотрудника открыть приложение и проверить разрешение геолокации, GPS и интернет. Само расписание не отправляет координаты.",
+  "locateEmployee": "Найти на карте",
+  "openEmployeeProfile": "Открыть сотрудника",
+  "backToPeople": "К списку сотрудников",
+  "openEmployeeSchedule": "Управлять расписанием",
+  "contactDetails": "Контакты и место работы",
+  "employeeAccessSummary": "Аккаунт и мобильное устройство",
+  "manageEmployeeAccess": "Управлять доступом и устройством",
+  "showAllEmployees": "Показать всех сотрудников"
+});
+
+Object.assign(en, { loadFailed: "Could not load this information. Please try again.", trackingStaleCount: "{count} stale positions" });
+Object.assign(uz, { loadFailed: "Ma’lumotni yuklab bo‘lmadi. Qayta urinib ko‘ring.", trackingStaleCount: "{count} ta eskirgan joylashuv" });
+Object.assign(ru, { loadFailed: "Не удалось загрузить данные. Попробуйте ещё раз.", trackingStaleCount: "Устаревших позиций: {count}" });
 export const dictionaries: Record<Locale, Dictionary> = { en, uz, ru };
 interface I18nValue {
   locale: Locale;

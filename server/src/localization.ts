@@ -43,6 +43,25 @@ const messages: Record<ApiLocale, Record<string, string>> = {
     "Invalid work location": "Ish manzili noto‘g‘ri",
     "No active employees match this scope":
       "Bu tanlovga mos faol xodimlar topilmadi",
+    "This account is already linked to another mobile device":
+      "Bu hisob boshqa mobil qurilmaga bog‘langan",
+    "This mobile device is already linked to another account":
+      "Bu mobil qurilma boshqa hisobga bog‘langan",
+    "A valid attendance selfie is required":
+      "Davomat uchun yaroqli selfi talab qilinadi",
+    "Take a new selfie immediately before recording attendance":
+      "Davomatni qayd etishdan oldin yangi selfi oling",
+    "No mobile device is linked to this employee":
+      "Bu xodimga mobil qurilma bog‘lanmagan",
+    "Attendance selfie not found": "Davomat selfisi topilmadi",
+    "The mobile app is only available to employees":
+      "Mobil ilova faqat xodimlar uchun mavjud",
+    "Live location update is no longer current":
+      "Jonli joylashuv ma'lumoti eskirgan",
+    "An active employee profile is required":
+      "Faol xodim profili talab qilinadi",
+    "Live location is not enabled for an active shift":
+      "Faol smena uchun jonli joylashuv yoqilmagan",
   },
   ru: {
     "Authentication required": "Требуется авторизация",
@@ -84,6 +103,25 @@ const messages: Record<ApiLocale, Record<string, string>> = {
     "Invalid work location": "Недопустимая рабочая локация",
     "No active employees match this scope":
       "Для выбранной области нет активных сотрудников",
+    "This account is already linked to another mobile device":
+      "Эта учетная запись уже привязана к другому мобильному устройству",
+    "This mobile device is already linked to another account":
+      "Это мобильное устройство уже привязано к другой учетной записи",
+    "A valid attendance selfie is required":
+      "Требуется действительное селфи для учета посещаемости",
+    "Take a new selfie immediately before recording attendance":
+      "Сделайте новое селфи непосредственно перед отметкой посещаемости",
+    "No mobile device is linked to this employee":
+      "К этому сотруднику не привязано мобильное устройство",
+    "Attendance selfie not found": "Селфи посещаемости не найдено",
+    "The mobile app is only available to employees":
+      "Мобильное приложение доступно только сотрудникам",
+    "Live location update is no longer current":
+      "Данные геолокации устарели",
+    "An active employee profile is required":
+      "Требуется активный профиль сотрудника",
+    "Live location is not enabled for an active shift":
+      "Геолокация не включена для активной смены",
   },
 };
 

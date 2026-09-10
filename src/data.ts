@@ -17,6 +17,7 @@ export interface EmployeeRow {
   status: AttendanceUiStatus;
   source: AttendanceUiSource;
   withinGeofence?: boolean | null;
+  clockOutWithinGeofence?: boolean | null;
   tone: string;
 }
 

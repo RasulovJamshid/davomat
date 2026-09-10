@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   BadgeCheck,
+  ArrowLeft,
   BriefcaseBusiness,
   Building2,
   Check,
@@ -16,6 +17,7 @@ import {
   Plus,
   Search,
   ShieldCheck,
+  Smartphone,
   UserRoundPlus,
   UsersRound,
   X,
@@ -30,6 +32,7 @@ import { apiRequest } from "./api";
 import { provisionEmployeeAccount, updateEmployee } from "./workforceApi";
 import { formatUzs } from "./domain/payroll";
 import { intlLocale, useI18n } from "./i18n";
+import { EmployeeActivity } from "./EmployeeActivity";
 
 type EmploymentStatus = "ACTIVE" | "ON_LEAVE" | "INVITED" | "INACTIVE";
 type DirectoryFilter = "ALL" | EmploymentStatus;
@@ -81,6 +84,13 @@ interface ApiEmployee {
   hourlyRate: number;
   accountEmail: string | null;
   accountActive: boolean;
+}
+interface MobileDeviceBinding {
+  id: string;
+  platform: "ANDROID" | "IOS";
+  deviceLabel: string;
+  boundAt: string;
+  lastSeenAt: string;
 }
 
 const tones = ["plum", "blue", "gold", "green", "coral"];
@@ -433,11 +443,15 @@ function PersonProfile({
   onClose,
   onUpdate,
   onProvision,
+  onOpenSchedule,
+  onOpenLiveLocations,
 }: {
   person: Person;
   departments: DirectoryMeta["departments"];
   locations: DirectoryMeta["locations"];
   onClose: () => void;
+  onOpenSchedule?: (employeeId: string) => void;
+  onOpenLiveLocations?: (employeeId: string, name?: string) => void;
   onUpdate: (input: {
     name: string;
     phone: string;
@@ -468,6 +482,13 @@ function PersonProfile({
       : person.access === "Location manager"
         ? "LOCATION_MANAGER"
         : "ADMINISTRATOR";
+  const [section, setSection] = useState("overview");
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [person.id]);
+  const [saved, setSaved] = useState(false);
+  const [deviceError, setDeviceError] = useState("");
+  const [deviceRetry, setDeviceRetry] = useState(0);
   const [status, setStatus] = useState<"ACTIVE" | "ON_LEAVE" | "INACTIVE">(
     person.status === "INVITED" ? "ACTIVE" : person.status,
   );
@@ -491,11 +512,56 @@ function PersonProfile({
   const [temporaryPassword, setTemporaryPassword] = useState("");
   const [provisioning, setProvisioning] = useState(false);
   const [accountMessage, setAccountMessage] = useState("");
+  const [mobileDevice, setMobileDevice] = useState<MobileDeviceBinding | null>(
+    null,
+  );
+  const [deviceLoading, setDeviceLoading] = useState(true);
+  useEffect(() => {
+    let active = true;
+    setDeviceLoading(true);
+    setDeviceError("");
+    apiRequest<MobileDeviceBinding | null>(
+      `/employees/${person.id}/mobile-device`,
+    )
+      .then((device) => {
+        if (active) setMobileDevice(device);
+      })
+      .catch((reason) => {
+        if (active)
+          setDeviceError(
+            reason instanceof Error ? reason.message : t("loadFailed"),
+          );
+      })
+      .finally(() => {
+        if (active) setDeviceLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [person.id, deviceRetry]);
+  const resetMobileDevice = async () => {
+    if (!window.confirm(t("resetMobileDeviceConfirm"))) return;
+    setDeviceLoading(true);
+    try {
+      await apiRequest(`/employees/${person.id}/mobile-device`, {
+        method: "DELETE",
+      });
+      setMobileDevice(null);
+      setAccountMessage(t("mobileDeviceReset"));
+    } catch (reason) {
+      setAccountMessage(
+        reason instanceof Error ? reason.message : t("mobileDeviceResetFailed"),
+      );
+    } finally {
+      setDeviceLoading(false);
+    }
+  };
   const save = async (event: FormEvent) => {
     event.preventDefault();
     if (!departmentId || !locationId)
       return setError(t("chooseDepartmentLocation"));
     setSaving(true);
+    setSaved(false);
     setError("");
     try {
       await onUpdate({
@@ -513,6 +579,7 @@ function PersonProfile({
         status,
         accessRole,
       });
+      setSaved(true);
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : t("updateEmployeeFailed"),
@@ -549,268 +616,388 @@ function PersonProfile({
     }
   };
   return (
-    <>
-      <button
-        className="drawer-scrim"
-        onClick={onClose}
-        aria-label={t("closeProfile")}
-      />
-      <aside className="attendance-drawer people-drawer">
-        <div className="drawer-header">
-          <div>
-            <p className="eyebrow">{t("employeeProfile")}</p>
-            <h2>{t("employmentDetails")}</h2>
-          </div>
-          <button
-            className="icon-button"
-            onClick={onClose}
-            aria-label={t("close")}
-          >
-            <X size={18} />
-          </button>
+    <section className="employee-workspace">
+      <button className="text-button employee-back" onClick={onClose}>
+        <ArrowLeft size={18} />
+        {t("backToPeople")}
+      </button>
+      <div className="page-heading-row">
+        <div>
+          <p className="eyebrow">{t("employeeProfile")}</p>
+          <h1>{person.name}</h1>
         </div>
-        <div className="profile-hero">
-          <Avatar person={person} large />
-          <div>
-            <h3>{person.name}</h3>
-            <p>{person.jobTitle}</p>
-            <span
-              className={`employment-status ${person.status.toLowerCase()}`}
+        <div className="employee-quick-actions">
+          {onOpenSchedule && (
+            <button
+              className="secondary-button"
+              onClick={() => onOpenSchedule(person.id)}
             >
-              <i />
-              {t(statusTranslationKey[person.status])}
-            </span>
-          </div>
+              {t("openEmployeeSchedule")}
+            </button>
+          )}
+          {onOpenLiveLocations && (
+            <button
+              className="secondary-button"
+              onClick={() => onOpenLiveLocations(person.id, person.name)}
+            >
+              <MapPin size={16} />
+              {t("liveLocations")}
+            </button>
+          )}
         </div>
-        <form className="profile-section profile-edit-form" onSubmit={save}>
-          <h3>{t("editEmploymentProfile")}</h3>
-          <label className="form-field">
-            <span>{t("fullName")}</span>
-            <input
-              required
-              minLength={2}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </label>
-          <div className="profile-edit-grid">
-            <label className="form-field">
-              <span>{t("phone")}</span>
-              <input
-                required
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-              />
-            </label>
-            <label className="form-field">
-              <span>{t("email")}</span>
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-              />
-            </label>
-            <label className="form-field">
-              <span>{t("jobTitle")}</span>
-              <input
-                required
-                minLength={2}
-                value={jobTitle}
-                onChange={(event) => setJobTitle(event.target.value)}
-              />
-            </label>
-            <label className="form-field">
-              <span>{t("department")}</span>
-              <select
-                required
-                value={departmentId}
-                onChange={(event) => setDepartmentId(event.target.value)}
-              >
-                {departments.map((item) => (
-                  <option value={item.id} key={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="form-field">
-              <span>{t("primaryLocation")}</span>
-              <select
-                required
-                value={locationId}
-                onChange={(event) => setLocationId(event.target.value)}
-              >
-                {locations.map((item) => (
-                  <option value={item.id} key={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <fieldset className="form-field full">
-              <legend>{t("secondaryLocations")}</legend>
-              <div className="location-checkboxes">
-                {locations
-                  .filter((item) => item.id !== locationId)
-                  .map((item) => (
-                    <label key={item.id}>
-                      <input
-                        type="checkbox"
-                        checked={secondaryLocationIds.includes(item.id)}
-                        onChange={(event) =>
-                          setSecondaryLocationIds((current) =>
-                            event.target.checked
-                              ? [...new Set([...current, item.id])]
-                              : current.filter((id) => id !== item.id),
-                          )
-                        }
-                      />
-                      <span>{item.name}</span>
-                    </label>
-                  ))}
-              </div>
-            </fieldset>
-            <label className="form-field">
-              <span>{t("monthlySalary")}</span>
-              <input
-                type="number"
-                min="0"
-                required
-                value={baseSalary}
-                onChange={(event) => setBaseSalary(event.target.value)}
-              />
-            </label>
-            <label className="form-field">
-              <span>{t("overtimeRate")}</span>
-              <input
-                type="number"
-                min="0"
-                required
-                value={hourlyRate}
-                onChange={(event) => setHourlyRate(event.target.value)}
-              />
-            </label>
-            <label className="form-field">
-              <span>{t("accessRole")}</span>
-              <select
-                value={accessRole}
-                onChange={(event) =>
-                  setAccessRole(event.target.value as typeof accessRole)
-                }
-              >
-                <option value="EMPLOYEE">{t("employee")}</option>
-                <option value="LOCATION_MANAGER">{t("locationManager")}</option>
-                <option value="ADMINISTRATOR">{t("administrator")}</option>
-              </select>
-            </label>
-            <label className="form-field">
-              <span>{t("employmentStatus")}</span>
-              <select
-                value={status}
-                onChange={(event) =>
-                  setStatus(event.target.value as typeof status)
-                }
-              >
-                <option value="ACTIVE">{t("active")}</option>
-                <option value="ON_LEAVE">{t("onLeave")}</option>
-                <option value="INACTIVE">{t("inactive")}</option>
-              </select>
-            </label>
-          </div>
-          {error && (
-            <div className="schedule-error">
-              <X size={15} />
-              {error}
-            </div>
-          )}
-          <button className="primary-button wide" disabled={saving}>
-            <ShieldCheck size={16} />
-            {saving ? t("saving") : t("saveEmployeeChanges")}
-          </button>
-        </form>
-        <form
-          className="profile-section account-provision"
-          onSubmit={provision}
-        >
-          <h3>{t("employeeLogin")}</h3>
-          <div
-            className={`account-state ${person.accountActive ? "active" : ""}`}
-          >
+      </div>
+      <div className="profile-hero">
+        <Avatar person={person} large />
+        <div>
+          <strong>
+            {t("employeeId")}: {person.employeeNumber}
+          </strong>
+          <p>{person.jobTitle}</p>
+          <span className={`employment-status ${person.status.toLowerCase()}`}>
             <i />
-            <span>
-              {person.accountActive
-                ? t("activeAs", { email: person.accountEmail })
-                : t("noLoginAccount")}
-            </span>
-          </div>
-          <label className="form-field">
-            <span>{t("loginEmail")}</span>
-            <input
-              type="email"
-              required
-              value={accountEmail}
-              onChange={(event) => setAccountEmail(event.target.value)}
-            />
-          </label>
-          <label className="form-field">
-            <span>
-              {person.accountActive
-                ? t("newTemporaryPassword")
-                : t("temporaryPassword")}
-            </span>
-            <input
-              type="password"
-              required
-              minLength={10}
-              autoComplete="new-password"
-              value={temporaryPassword}
-              onChange={(event) => setTemporaryPassword(event.target.value)}
-              placeholder={t("atLeastCharacters", { count: 10 })}
-            />
-          </label>
-          {accountMessage && (
-            <p className="account-message">{accountMessage}</p>
-          )}
-          <button className="secondary-button wide" disabled={provisioning}>
-            <KeyRound size={16} />
-            {provisioning
-              ? t("saving")
-              : person.accountActive
-                ? t("resetCredentials")
-                : t("createLogin")}
-          </button>
-        </form>
+            {t(statusTranslationKey[person.status])}
+          </span>
+        </div>
+      </div>
+      <div
+        className="workspace-tabs employee-section-nav"
+        aria-label={t("employeeProfile")}
+      >
+        {["overview", "employmentDetails", "employeeLogin", "attendance"].map(
+          (key) => (
+            <button
+              key={key}
+              className={section === key ? "active" : ""}
+              aria-pressed={section === key}
+              onClick={() => setSection(key)}
+            >
+              {t(key)}
+            </button>
+          ),
+        )}
+      </div>
+      {section === "attendance" && <EmployeeActivity employeeId={person.id} />}
+      <div hidden={section !== "overview"} className="employee-overview">
         <section className="profile-section">
-          <h3>{t("employment")}</h3>
+          <h3>{t("contactDetails")}</h3>
           <dl className="profile-definition">
             <div>
-              <dt>{t("joined")}</dt>
-              <dd>
-                {person.joined === "INVITATION_PENDING"
-                  ? t("invitationPending")
-                  : person.joined === "NOT_STARTED"
-                    ? t("notStarted")
-                    : person.joined}
-              </dd>
+              <dt>{t("email")}</dt>
+              <dd>{person.email || "—"}</dd>
             </div>
             <div>
-              <dt>{t("employeeId")}</dt>
-              <dd>{person.employeeNumber}</dd>
+              <dt>{t("phone")}</dt>
+              <dd>{person.phone || "—"}</dd>
             </div>
             <div>
-              <dt>{t("monthlySalary")}</dt>
-              <dd>{formatUzs(person.baseSalary)}</dd>
+              <dt>{t("department")}</dt>
+              <dd>{person.department}</dd>
             </div>
             <div>
-              <dt>{t("overtimeRate")}</dt>
-              <dd>
-                {formatUzs(person.hourlyRate)}/{t("hour")}
-              </dd>
+              <dt>{t("location")}</dt>
+              <dd>{person.location}</dd>
             </div>
           </dl>
         </section>
-      </aside>
-    </>
+        <section className="profile-section">
+          <h3>{t("employeeAccessSummary")}</h3>
+          <p>
+            {person.accountActive
+              ? t("activeAs", { email: person.accountEmail })
+              : t("noLoginAccount")}
+          </p>
+          <p>
+            {deviceLoading
+              ? t("loading")
+              : deviceError ||
+                (mobileDevice
+                  ? `${mobileDevice.deviceLabel} · ${mobileDevice.platform}`
+                  : t("noLinkedMobileDevice"))}
+          </p>
+          <button
+            className="secondary-button"
+            onClick={() => setSection("employeeLogin")}
+          >
+            {t("manageEmployeeAccess")}
+          </button>
+        </section>
+      </div>
+      <form
+        hidden={section !== "employmentDetails"}
+        className="profile-section profile-edit-form"
+        onSubmit={save}
+      >
+        <h3>{t("editEmploymentProfile")}</h3>
+        <label className="form-field">
+          <span>{t("fullName")}</span>
+          <input
+            required
+            minLength={2}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+        </label>
+        <div className="profile-edit-grid">
+          <label className="form-field">
+            <span>{t("phone")}</span>
+            <input
+              required
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+            />
+          </label>
+          <label className="form-field">
+            <span>{t("email")}</span>
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+          </label>
+          <label className="form-field">
+            <span>{t("jobTitle")}</span>
+            <input
+              required
+              minLength={2}
+              value={jobTitle}
+              onChange={(event) => setJobTitle(event.target.value)}
+            />
+          </label>
+          <label className="form-field">
+            <span>{t("department")}</span>
+            <select
+              required
+              value={departmentId}
+              onChange={(event) => setDepartmentId(event.target.value)}
+            >
+              {departments.map((item) => (
+                <option value={item.id} key={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="form-field">
+            <span>{t("primaryLocation")}</span>
+            <select
+              required
+              value={locationId}
+              onChange={(event) => setLocationId(event.target.value)}
+            >
+              {locations.map((item) => (
+                <option value={item.id} key={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <fieldset className="form-field full">
+            <legend>{t("secondaryLocations")}</legend>
+            <div className="location-checkboxes">
+              {locations
+                .filter((item) => item.id !== locationId)
+                .map((item) => (
+                  <label key={item.id}>
+                    <input
+                      type="checkbox"
+                      checked={secondaryLocationIds.includes(item.id)}
+                      onChange={(event) =>
+                        setSecondaryLocationIds((current) =>
+                          event.target.checked
+                            ? [...new Set([...current, item.id])]
+                            : current.filter((id) => id !== item.id),
+                        )
+                      }
+                    />
+                    <span>{item.name}</span>
+                  </label>
+                ))}
+            </div>
+          </fieldset>
+          <label className="form-field">
+            <span>{t("monthlySalary")}</span>
+            <input
+              type="number"
+              min="0"
+              required
+              value={baseSalary}
+              onChange={(event) => setBaseSalary(event.target.value)}
+            />
+          </label>
+          <label className="form-field">
+            <span>{t("overtimeRate")}</span>
+            <input
+              type="number"
+              min="0"
+              required
+              value={hourlyRate}
+              onChange={(event) => setHourlyRate(event.target.value)}
+            />
+          </label>
+          <label className="form-field">
+            <span>{t("accessRole")}</span>
+            <select
+              value={accessRole}
+              onChange={(event) =>
+                setAccessRole(event.target.value as typeof accessRole)
+              }
+            >
+              <option value="EMPLOYEE">{t("employee")}</option>
+              <option value="LOCATION_MANAGER">{t("locationManager")}</option>
+              <option value="ADMINISTRATOR">{t("administrator")}</option>
+            </select>
+          </label>
+          <label className="form-field">
+            <span>{t("employmentStatus")}</span>
+            <select
+              value={status}
+              onChange={(event) =>
+                setStatus(event.target.value as typeof status)
+              }
+            >
+              <option value="ACTIVE">{t("active")}</option>
+              <option value="ON_LEAVE">{t("onLeave")}</option>
+              <option value="INACTIVE">{t("inactive")}</option>
+            </select>
+          </label>
+        </div>
+        {error && (
+          <div className="schedule-error">
+            <X size={15} />
+            {error}
+          </div>
+        )}
+        <button className="primary-button wide" disabled={saving}>
+          <ShieldCheck size={16} />
+          {saving ? t("saving") : t("saveEmployeeChanges")}
+        </button>
+        {saved && (
+          <p role="status">{t("employeeUpdated", { name: person.name })}</p>
+        )}
+      </form>
+      <form
+        hidden={section !== "employeeLogin"}
+        className="profile-section account-provision"
+        onSubmit={provision}
+      >
+        <h3>{t("employeeLogin")}</h3>
+        <div
+          className={`account-state ${person.accountActive ? "active" : ""}`}
+        >
+          <i />
+          <span>
+            {person.accountActive
+              ? t("activeAs", { email: person.accountEmail })
+              : t("noLoginAccount")}
+          </span>
+        </div>
+        <label className="form-field">
+          <span>{t("loginEmail")}</span>
+          <input
+            type="email"
+            required
+            value={accountEmail}
+            onChange={(event) => setAccountEmail(event.target.value)}
+          />
+        </label>
+        <label className="form-field">
+          <span>
+            {person.accountActive
+              ? t("newTemporaryPassword")
+              : t("temporaryPassword")}
+          </span>
+          <input
+            type="password"
+            required
+            minLength={10}
+            autoComplete="new-password"
+            value={temporaryPassword}
+            onChange={(event) => setTemporaryPassword(event.target.value)}
+            placeholder={t("atLeastCharacters", { count: 10 })}
+          />
+        </label>
+        {accountMessage && <p className="account-message">{accountMessage}</p>}
+        <button className="secondary-button wide" disabled={provisioning}>
+          <KeyRound size={16} />
+          {provisioning
+            ? t("saving")
+            : person.accountActive
+              ? t("resetCredentials")
+              : t("createLogin")}
+        </button>
+      </form>
+      <section
+        hidden={section !== "employeeLogin"}
+        className="profile-section account-provision"
+      >
+        <h3>{t("linkedMobileDevice")}</h3>
+        {deviceLoading ? (
+          <p>{t("loading")}</p>
+        ) : deviceError ? (
+          <div role="alert">
+            <p className="schedule-error">{deviceError}</p>
+            <button
+              className="secondary-button"
+              onClick={() => setDeviceRetry((value) => value + 1)}
+            >
+              {t("retry")}
+            </button>
+          </div>
+        ) : mobileDevice ? (
+          <>
+            <div className="account-state active">
+              <Smartphone size={17} />
+              <span>
+                {mobileDevice.deviceLabel} · {mobileDevice.platform}
+              </span>
+            </div>
+            <p className="account-message">
+              {t("lastVerifiedAt", {
+                date: new Date(mobileDevice.lastSeenAt).toLocaleString(),
+              })}
+            </p>
+            <button
+              type="button"
+              className="reject-button wide"
+              onClick={() => void resetMobileDevice()}
+            >
+              {t("resetMobileDevice")}
+            </button>
+          </>
+        ) : (
+          <p className="account-message">{t("noLinkedMobileDevice")}</p>
+        )}
+      </section>
+      <section hidden={section !== "overview"} className="profile-section">
+        <h3>{t("employment")}</h3>
+        <dl className="profile-definition">
+          <div>
+            <dt>{t("joined")}</dt>
+            <dd>
+              {person.joined === "INVITATION_PENDING"
+                ? t("invitationPending")
+                : person.joined === "NOT_STARTED"
+                  ? t("notStarted")
+                  : person.joined}
+            </dd>
+          </div>
+          <div>
+            <dt>{t("employeeId")}</dt>
+            <dd>{person.employeeNumber}</dd>
+          </div>
+          <div>
+            <dt>{t("monthlySalary")}</dt>
+            <dd>{formatUzs(person.baseSalary)}</dd>
+          </div>
+          <div>
+            <dt>{t("overtimeRate")}</dt>
+            <dd>
+              {formatUzs(person.hourlyRate)}/{t("hour")}
+            </dd>
+          </div>
+        </dl>
+      </section>
+    </section>
   );
 }
 
@@ -818,10 +1005,16 @@ export function PeoplePage({
   companyName,
   initialQuery = "",
   openAddRequest = 0,
+  initialEmployeeId,
+  onOpenSchedule,
+  onOpenLiveLocations,
 }: {
   companyName: string;
   initialQuery?: string;
   openAddRequest?: number;
+  initialEmployeeId?: string;
+  onOpenSchedule?: (employeeId: string) => void;
+  onOpenLiveLocations?: (employeeId: string, name?: string) => void;
 }) {
   const { t, locale } = useI18n();
   const [people, setPeople] = useState<Person[]>([]);
@@ -843,8 +1036,14 @@ export function PeoplePage({
       apiRequest<ApiEmployee[]>("/employees"),
       apiRequest<DirectoryMeta>("/meta"),
     ]);
-    setPeople(
-      employeeRows.map((employee, index) => toPerson(employee, index, locale)),
+    const nextPeople = employeeRows.map((employee, index) =>
+      toPerson(employee, index, locale),
+    );
+    setPeople(nextPeople);
+    setSelected((current) =>
+      current
+        ? (nextPeople.find((person) => person.id === current.id) ?? null)
+        : null,
     );
     setMeta(directoryMeta);
   };
@@ -859,6 +1058,12 @@ export function PeoplePage({
       .finally(() => setLoading(false));
   }, [locale]);
   useEffect(() => setQuery(initialQuery), [initialQuery]);
+  useEffect(() => {
+    if (initialEmployeeId && !loading)
+      setSelected(
+        people.find((person) => person.id === initialEmployeeId) ?? null,
+      );
+  }, [initialEmployeeId, loading]);
   useEffect(() => {
     if (openAddRequest > 0) setAdding(true);
   }, [openAddRequest]);
@@ -922,7 +1127,6 @@ export function PeoplePage({
     if (!selected) return;
     await updateEmployee(selected.id, input);
     await loadDirectory();
-    setSelected(null);
     setToast(t("employeeUpdated", { name: input.name }));
     window.setTimeout(() => setToast(null), 2500);
   };
@@ -978,6 +1182,21 @@ export function PeoplePage({
     link.click();
     URL.revokeObjectURL(link.href);
   };
+
+  if (selected)
+    return (
+      <PersonProfile
+        key={selected.id}
+        person={selected}
+        departments={meta.departments}
+        locations={meta.locations}
+        onClose={() => setSelected(null)}
+        onUpdate={updateSelected}
+        onProvision={provisionSelected}
+        onOpenSchedule={onOpenSchedule}
+        onOpenLiveLocations={onOpenLiveLocations}
+      />
+    );
 
   return (
     <div className="people-page">
@@ -1125,6 +1344,16 @@ export function PeoplePage({
                     className="clickable-row"
                     key={person.id}
                     onClick={() => setSelected(person)}
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (
+                        event.target === event.currentTarget &&
+                        (event.key === "Enter" || event.key === " ")
+                      ) {
+                        event.preventDefault();
+                        setSelected(person);
+                      }
+                    }}
                   >
                     <td>
                       <div className="employee-cell">
@@ -1204,16 +1433,6 @@ export function PeoplePage({
           onAdd={addEmployee}
           departments={meta.departments.map((item) => item.name)}
           locations={meta.locations.map((item) => item.name)}
-        />
-      )}
-      {selected && (
-        <PersonProfile
-          person={selected}
-          departments={meta.departments}
-          locations={meta.locations}
-          onClose={() => setSelected(null)}
-          onUpdate={updateSelected}
-          onProvision={provisionSelected}
         />
       )}
       <div className={`toast ${toast ? "visible" : ""}`}>

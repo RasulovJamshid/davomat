@@ -112,4 +112,14 @@ database before upgrading and keep the previous image tags available for rollbac
 - Forward container logs to durable storage and alert on unhealthy services.
 - Schedule encrypted PostgreSQL backups with retention and restore drills.
 - Add transactional email/SMS credentials before enabling real invitations.
-- Review local privacy and employment requirements before using biometrics.
+- Attendance selfies are sensitive personal data stored in PostgreSQL and included in
+  database backups. Define consent, access, encryption, retention, and deletion rules
+  that satisfy local privacy and employment requirements before enabling the feature.
+- The mobile app prevents gallery selection and binds normal installations to one
+  employee account. For resistance to rooted devices, modified clients, GPS spoofing,
+  or replay attacks, add platform device attestation and a certified liveness/matching
+  provider before treating a selfie as biometric identity proof.
+- Live location must be enabled explicitly on an individual shift. The API accepts
+  updates only during that published shift and retains one latest point rather than a
+  route history. Document the business purpose, notify employees, restrict manager
+  access, and define a deletion policy before enabling scheduled tracking.

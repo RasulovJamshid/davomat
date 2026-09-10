@@ -10,6 +10,7 @@ export async function processDueReports(companyId?:string):Promise<number>{
   const locked=(await client.query<{locked:boolean}>("SELECT pg_try_advisory_lock(731424) AS locked")).rows[0]?.locked;
   if(!locked){client.release();return 0;}
   try{
+  await client.query(`DELETE FROM live_location_updates u USING shifts s WHERE u.shift_id=s.id AND (s.status<>'PUBLISHED' OR s.live_tracking_enabled=false OR now()>s.ends_at)`);
   const definitions=(await pool.query<Definition>(`SELECT id,company_id,name,report_type,format,schedule_cron,recipients,filters FROM report_definitions WHERE active=true AND next_run_at<=now() AND ($1::uuid IS NULL OR company_id=$1) ORDER BY next_run_at LIMIT 20`,[companyId??null])).rows;
   for(const report of definitions){let runId:string|undefined;try{
     const run=await pool.query<{id:string}>(`INSERT INTO report_runs(company_id,report_definition_id,report_type,format,status) VALUES($1,$2,$3,$4,'RUNNING') RETURNING id`,[report.company_id,report.id,report.report_type,report.format]);runId=run.rows[0].id;

@@ -29,6 +29,15 @@ test("manager can navigate every operational workspace and switch language", asy
   await expect(
     page.getByRole("heading", { name: /Good afternoon/ }),
   ).toBeVisible();
+  const workspaceSwitcher = page.getByLabel("Go to workspace");
+  await expect(workspaceSwitcher).toHaveValue("Overview");
+  await workspaceSwitcher.selectOption("Payroll");
+  await expect(page).toHaveURL(/#\/payroll$/);
+  await expect(
+    page.getByRole("heading", { name: "Payroll", exact: true }),
+  ).toBeVisible();
+  await page.goBack();
+  await expect(workspaceSwitcher).toHaveValue("Overview");
   for (const name of [
     "Attendance",
     "Schedule",
@@ -48,7 +57,17 @@ test("manager can navigate every operational workspace and switch language", asy
     await expect(
       page.getByRole("heading", { name, exact: true }),
     ).toBeVisible();
+    if (name === "Attendance") {
+      await page.getByRole("tab", { name: "Live map" }).click();
+      await expect(
+        page.getByRole("heading", { name: "Live locations" }),
+      ).toBeVisible();
+    }
   }
+  await expect(page.locator(".location-map.leaflet-container")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Use my location" }),
+  ).toBeVisible();
   await page.getByRole("main").getByLabel("Language").selectOption("uz");
   await expect(
     page.getByRole("heading", { name: "Sozlamalar", exact: true }),

@@ -424,12 +424,13 @@ export function AdvancedPage() {
           {t("refresh")}
         </button>
       </div>
-      <nav className="advanced-tabs">
+      <nav className="advanced-tabs" aria-label={t("advancedSections")}>
         {(["devices", "payroll", "scheduling", "reports"] as const).map(
           (name) => (
             <button
               key={name}
               className={tab === name ? "active" : ""}
+              aria-current={tab === name ? "page" : undefined}
               onClick={() => setTab(name)}
             >
               {name === "devices" ? (

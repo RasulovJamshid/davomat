@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { lazy, Suspense, useMemo, useState, type FormEvent } from "react";
 import {
   CalendarDays,
   Check,
@@ -20,12 +20,20 @@ import {
 import type { EmployeeRow, ExceptionItem } from "./data";
 import { intlLocale, useI18n } from "./i18n";
 import { AttendanceEventsModal } from "./AttendanceEventsModal";
+import { GeofenceStatus } from "./GeofenceStatus";
 
-export type AttendanceTab = "records" | "exceptions";
+export type AttendanceTab = "records" | "exceptions" | "live";
+const LiveLocationsMap = lazy(() =>
+  import("./LiveLocationsMap").then((module) => ({
+    default: module.LiveLocationsMap,
+  })),
+);
 type RecordFilter = "all" | "working" | "attention";
 type Resolution = "approved" | "rejected";
 
 interface AttendancePageProps {
+  onOpenSchedule?: (employeeId?: string) => void;
+  onOpenEmployee?: (employeeId: string) => void;
   date: string;
   exceptions: ExceptionItem[];
   records: EmployeeRow[];
@@ -208,7 +216,7 @@ function EmployeeDrawer({
           </span>
           <span className="verified-label">
             <Check size={13} />
-            {hasClockIn ? t("identityVerified") : t("noAttendanceEvent")}
+            {hasClockIn ? t("clockInRecorded") : t("noAttendanceEvent")}
           </span>
         </div>
         <section className="drawer-section">
@@ -264,7 +272,7 @@ function EmployeeDrawer({
             </span>
             <div>
               <strong>{t(sourceTranslationKey[employee.source])}</strong>
-              <small>{hasClockIn ? t("trustedSource") : t("noSource")}</small>
+              <small>{t("attendanceSourceHint")}</small>
             </div>
             {hasClockIn ? <CheckCircle2 size={18} /> : <Clock3 size={18} />}
           </div>
@@ -274,11 +282,7 @@ function EmployeeDrawer({
             </span>
             <div>
               <strong>{employee.branch || t("unassigned")}</strong>
-              <small>
-                {employee.withinGeofence == null
-                  ? t("noLocationEvidence")
-                  : t("approvedLocationCheck")}
-              </small>
+              <small>{t("geofenceRecordedHint")}</small>
             </div>
             {employee.withinGeofence === false ? (
               <XCircle className="danger-icon" size={18} />
@@ -287,6 +291,16 @@ function EmployeeDrawer({
             ) : (
               <Clock3 size={18} />
             )}
+          </div>
+          <div className="geofence-evidence">
+            <div>
+              <span>{t("clockIn")}</span>
+              <GeofenceStatus value={employee.withinGeofence} />
+            </div>
+            <div>
+              <span>{t("clockOut")}</span>
+              <GeofenceStatus value={employee.clockOutWithinGeofence} />
+            </div>
           </div>
         </section>
         <section className="drawer-section calculation-card">
@@ -367,6 +381,7 @@ function RecordsView({
               <button
                 key={item}
                 className={filter === item ? "active" : ""}
+                aria-pressed={filter === item}
                 onClick={() => setFilter(item)}
               >
                 {item === "all"
@@ -378,6 +393,22 @@ function RecordsView({
             ))}
           </div>
         </div>
+        {(query || filter !== "all") && (
+          <div className="filter-summary">
+            <span role="status">
+              {t("recordsShown", { count: filtered.length })}
+            </span>
+            <button
+              className="text-button"
+              onClick={() => {
+                setQuery("");
+                setFilter("all");
+              }}
+            >
+              {t("clearFilters")}
+            </button>
+          </div>
+        )}
         <div className="table-wrap attendance-workspace-table">
           <table>
             <thead>
@@ -388,13 +419,36 @@ function RecordsView({
                 <th>{t("lastOut")}</th>
                 <th>{t("worked")}</th>
                 <th>{t("verification")}</th>
+                <th>{t("geofenceCheck")}</th>
                 <th>{t("status")}</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7}>{t("loadingAttendance")}</td>
+                  <td colSpan={8}>{t("loadingAttendance")}</td>
+                </tr>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8}>
+                    <div className="workflow-empty">
+                      <Search size={24} aria-hidden="true" />
+                      <strong>
+                        {t(
+                          query || filter !== "all"
+                            ? "noMatchingEmployees"
+                            : "noAttendanceForDate",
+                        )}
+                      </strong>
+                      <p>
+                        {t(
+                          query || filter !== "all"
+                            ? "adjustFiltersHint"
+                            : "chooseAttendanceDate",
+                        )}
+                      </p>
+                    </div>
+                  </td>
                 </tr>
               ) : (
                 filtered.map((employee) => {
@@ -403,6 +457,16 @@ function RecordsView({
                     <tr
                       key={employee.id}
                       onClick={() => setSelected(employee)}
+                      tabIndex={0}
+                      aria-label={t("employeeAttendanceDetails", {
+                        name: employee.name,
+                      })}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setSelected(employee);
+                        }
+                      }}
                       className="clickable-row"
                     >
                       <td>
@@ -426,6 +490,20 @@ function RecordsView({
                           <SourceIcon size={15} />
                           {t(sourceTranslationKey[employee.source])}
                         </span>
+                      </td>
+                      <td>
+                        <div className="geofence-evidence">
+                          <div>
+                            <span>{t("clockIn")}</span>
+                            <GeofenceStatus value={employee.withinGeofence} />
+                          </div>
+                          <div>
+                            <span>{t("clockOut")}</span>
+                            <GeofenceStatus
+                              value={employee.clockOutWithinGeofence}
+                            />
+                          </div>
+                        </div>
                       </td>
                       <td>
                         <span
@@ -721,6 +799,8 @@ function PunchModal({
 }
 
 export function AttendancePage({
+  onOpenSchedule,
+  onOpenEmployee,
   date,
   exceptions,
   records,
@@ -763,29 +843,43 @@ export function AttendancePage({
       <AttendanceSummary records={records} />
       <div className="workspace-tabs" role="tablist">
         <button
+          role="tab"
+          aria-selected={tab === "records"}
           className={tab === "records" ? "active" : ""}
           onClick={() => onTabChange("records")}
         >
           {t("timeRecords")} <span>{records.length}</span>
         </button>
         <button
+          role="tab"
+          aria-selected={tab === "exceptions"}
           className={tab === "exceptions" ? "active" : ""}
           onClick={() => onTabChange("exceptions")}
         >
           {t("exceptions")}{" "}
           <span className="alert-count">{exceptions.length}</span>
         </button>
+        <button
+          role="tab"
+          aria-selected={tab === "live"}
+          className={tab === "live" ? "active" : ""}
+          onClick={() => onTabChange("live")}
+        >
+          <MapPin size={15} /> {t("liveMap")}
+        </button>
       </div>
       {tab === "records" ? (
         <RecordsView records={records} loading={loading} date={date} />
-      ) : (
+      ) : tab === "exceptions" ? (
         <div className="exception-workspace">
           <div className="exception-workspace-heading">
             <div>
               <h2>{t("correctionInbox")}</h2>
               <p>{t("correctionInboxDescription")}</p>
             </div>
-            <span>{exceptions.length} pending</span>
+            <span>
+              {exceptions.length} · {t("pending")}
+            </span>
           </div>
           {exceptions.length > 0 ? (
             exceptions.map((item) => (
@@ -805,6 +899,15 @@ export function AttendancePage({
             </div>
           )}
         </div>
+      ) : (
+        <Suspense
+          fallback={<div className="panel all-clear">{t("loading")}</div>}
+        >
+          <LiveLocationsMap
+            onOpenSchedule={onOpenSchedule}
+            onOpenEmployee={onOpenEmployee}
+          />
+        </Suspense>
       )}
       {recording && (
         <PunchModal

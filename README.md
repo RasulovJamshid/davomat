@@ -15,7 +15,7 @@ secured Node API and PostgreSQL database.
 - Live Overview and Attendance workspaces with daily/weekly totals, manual clock events,
   exception resolution, and CSV export
 - Audited attendance-exception approvals and rejections with required manager notes
-- Geofence-aware attendance status calculation
+- Geofence-aware attendance status calculation and map-based workplace/geofence selection
 - Weekly scheduling with filters, editable draft/published shifts, overlap protection,
   copy-week, cancellation, coverage warnings, and publishing
 - Payroll-period generation, attendance basis, auditable adjustments, individual/batch
@@ -23,8 +23,12 @@ secured Node API and PostgreSQL database.
 - Company, editable department/work-location, geofence, currency, timezone, leave,
   correction-window, payroll-tax-policy, and password setup
 - Persistent or browser-session login selected by the user
-- Responsive employee self-service for mobile clocking, breaks, published schedules,
-  approved payslips, and correction requests
+- Flutter employee app with camera-only attendance selfies, precise GPS punches,
+  one-active-device-per-account enforcement, breaks, schedules, payslips, and requests
+- Per-shift live-location authorization with an employee-visible tracking indicator,
+  background mobile updates, and a manager live map; only the latest point is retained
+- Manager-only attendance selfie review and audited employee device reset; browser
+  self-punching is disabled so it cannot bypass mobile verification
 - Manager-controlled employee login provisioning, credential resets, and SMTP invitation delivery
 - Approved employee corrections atomically create the requested timesheet event
 - Employee leave requests with configurable annual balance, date-overlap protection,

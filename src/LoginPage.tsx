@@ -3,7 +3,6 @@ import {
   ArrowRight,
   Check,
   Clock3,
-  Command,
   Eye,
   EyeOff,
   LoaderCircle,
@@ -18,6 +17,7 @@ import {
   type SessionUser,
 } from "./api";
 import { LanguageSwitcher, useI18n } from "./i18n";
+import { BrandMark } from "./BrandMark";
 
 export function LoginPage({
   onAuthenticated,
@@ -77,9 +77,9 @@ export function LoginPage({
       <section className="login-story">
         <div className="login-brand">
           <span>
-            <Command size={21} />
+            <BrandMark />
           </span>
-          Atlas
+          davomat.
         </div>
         <div className="story-copy">
           <p className="eyebrow">{t("storyEyebrow")}</p>
@@ -100,13 +100,24 @@ export function LoginPage({
             </span>
           </div>
         </div>
-        <div className="login-proof">
-          <div className="proof-stack">
-            <span>AK</span>
-            <span>JS</span>
-            <span>MN</span>
-            <span>+123</span>
+        <div className="register-art" aria-hidden="true">
+          <div className="register-art-heading">
+            <span>BRANDFACES / 01</span>
+            <span>08:00 — 18:00</span>
           </div>
+          <div className="register-art-face">
+            <span>08</span>
+            <span>
+              00<span className="register-art-dot">.</span>
+            </span>
+          </div>
+          <div className="register-art-rule">
+            {Array.from({ length: 25 }, (_, index) => (
+              <i key={index} />
+            ))}
+          </div>
+        </div>
+        <div className="login-proof">
           <p>
             <strong>{t("wholeTeam")}</strong>
             <span>{t("teamRoles")}</span>
@@ -117,9 +128,9 @@ export function LoginPage({
         <form className="login-form" onSubmit={submit}>
           <div className="mobile-login-brand">
             <span>
-              <Command size={20} />
+              <BrandMark />
             </span>
-            Atlas
+            davomat.
           </div>
           <div className="login-language">
             <LanguageSwitcher compact />

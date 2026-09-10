@@ -17,6 +17,7 @@ import { config } from "./config.js";
 import { createAccountToken, hashAccountToken } from "./accountSecurity.js";
 import { advancedRouter } from "./advancedRoutes.js";
 import { localize } from "./localization.js";
+import { bindOrVerifyMobileDevice } from "./mobileVerification.js";
 
 export const apiRouter = Router();
 
@@ -29,19 +30,61 @@ const loginLimiter = rateLimit({
       .toLowerCase(),
   standardHeaders: true,
   legacyHeaders: false,
-  handler:(request,response)=>response.status(429).json({error:{code:"LOGIN_RATE_LIMITED",message:localize(request,"Too many sign-in attempts. Try again later")}}),
+  handler: (request, response) =>
+    response
+      .status(429)
+      .json({
+        error: {
+          code: "LOGIN_RATE_LIMITED",
+          message: localize(
+            request,
+            "Too many sign-in attempts. Try again later",
+          ),
+        },
+      }),
 });
 const recoveryLimiter = rateLimit({
   windowMs: 15 * 60_000,
   limit: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  handler:(request,response)=>response.status(429).json({error:{code:"RECOVERY_RATE_LIMITED",message:localize(request,"Too many recovery attempts. Try again later")}}),
+  handler: (request, response) =>
+    response
+      .status(429)
+      .json({
+        error: {
+          code: "RECOVERY_RATE_LIMITED",
+          message: localize(
+            request,
+            "Too many recovery attempts. Try again later",
+          ),
+        },
+      }),
 });
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-});
+const loginSchema = z
+  .object({
+    email: z.string().email(),
+    password: z.string().min(8),
+    clientType: z.enum(["WEB", "MOBILE"]).default("WEB"),
+    deviceInstallationId: z.string().min(32).max(160).optional(),
+    devicePlatform: z.enum(["ANDROID", "IOS"]).optional(),
+    deviceLabel: z.string().trim().min(2).max(120).optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.clientType === "MOBILE") {
+      for (const field of [
+        "deviceInstallationId",
+        "devicePlatform",
+        "deviceLabel",
+      ] as const)
+        if (!value[field])
+          context.addIssue({
+            code: "custom",
+            path: [field],
+            message: "Required for mobile sign-in",
+          });
+    }
+  });
 
 apiRouter.post(
   "/auth/login",
@@ -65,6 +108,40 @@ apiRouter.post(
     const user = result.rows[0];
     if (!user || !(await bcrypt.compare(input.password, user.password_hash)))
       throw new HttpError(401, "Invalid email or password");
+    if (input.clientType === "MOBILE") {
+      if (user.role !== "EMPLOYEE")
+        throw new HttpError(
+          403,
+          "The mobile app is only available to employees",
+        );
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        const employee = await client.query<{ id: string }>(
+          `SELECT id FROM employees WHERE user_id=$1 AND company_id=$2 AND status<>'INACTIVE' FOR UPDATE`,
+          [user.id, user.company_id],
+        );
+        if (!employee.rows[0])
+          throw new HttpError(
+            403,
+            "No active employee profile is linked to this account",
+          );
+        await bindOrVerifyMobileDevice(client, {
+          companyId: user.company_id,
+          userId: user.id,
+          employeeId: employee.rows[0].id,
+          installationId: input.deviceInstallationId!,
+          platform: input.devicePlatform!,
+          deviceLabel: input.deviceLabel!,
+        });
+        await client.query("COMMIT");
+      } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+      } finally {
+        client.release();
+      }
+    }
     const token = signAccessToken({
       sub: user.id,
       companyId: user.company_id,
@@ -291,8 +368,11 @@ apiRouter.get(
   "/integrations/status",
   requireManager,
   asyncHandler(async (request, response) => {
-    const {companyId}=(request as AuthRequest).auth;
-    const registeredDevices=await pool.query<{count:number}>("SELECT count(*)::int AS count FROM devices WHERE company_id=$1 AND active=true",[companyId]);
+    const { companyId } = (request as AuthRequest).auth;
+    const registeredDevices = await pool.query<{ count: number }>(
+      "SELECT count(*)::int AS count FROM devices WHERE company_id=$1 AND active=true",
+      [companyId],
+    );
     const pending = (configured: boolean, configuration: string) => ({
       configured,
       configuration,
@@ -310,9 +390,12 @@ apiRouter.get(
           "TELEGRAM_BOT_TOKEN",
         ),
         devices: {
-          configured:(registeredDevices.rows[0]?.count??0)>0,
-          configuration:"Advanced / Devices",
-          state:(registeredDevices.rows[0]?.count??0)>0?"ACTIVE":"NOT_CONFIGURED",
+          configured: (registeredDevices.rows[0]?.count ?? 0) > 0,
+          configuration: "Advanced / Devices",
+          state:
+            (registeredDevices.rows[0]?.count ?? 0) > 0
+              ? "ACTIVE"
+              : "NOT_CONFIGURED",
         },
       },
     });
@@ -417,8 +500,8 @@ apiRouter.patch(
 const locationSchema = z.object({
   name: z.string().trim().min(2).max(100),
   address: z.string().trim().max(250).optional(),
-  latitude: z.number().min(-90).max(90).nullable().optional(),
-  longitude: z.number().min(-180).max(180).nullable().optional(),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
   geofenceRadiusM: z.number().int().min(10).max(5000).default(150),
 });
 apiRouter.post(
@@ -434,8 +517,8 @@ apiRouter.post(
           companyId,
           input.name,
           input.address ?? "",
-          input.latitude ?? null,
-          input.longitude ?? null,
+          input.latitude,
+          input.longitude,
           input.geofenceRadiusM,
         ],
       );
@@ -460,11 +543,6 @@ apiRouter.patch(
     const input = locationUpdateSchema.parse(request.body);
     const id = z.string().uuid().parse(request.params.id);
     const { companyId, sub } = (request as AuthRequest).auth;
-    if ((input.latitude == null) !== (input.longitude == null))
-      throw new HttpError(
-        400,
-        "Provide both latitude and longitude, or neither",
-      );
     try {
       const previous = await pool.query(
         `SELECT id,name,address,latitude,longitude,geofence_radius_m,active FROM locations WHERE id=$1 AND company_id=$2`,
@@ -476,8 +554,8 @@ apiRouter.patch(
         [
           input.name,
           input.address ?? "",
-          input.latitude ?? null,
-          input.longitude ?? null,
+          input.latitude,
+          input.longitude,
           input.geofenceRadiusM,
           input.active,
           id,
@@ -816,7 +894,7 @@ apiRouter.get(
       .default(new Date().toISOString().slice(0, 10))
       .parse(request.query.date);
     const result = await pool.query(
-      `SELECT e.id,e.full_name AS name,e.job_title AS role,e.status AS "employmentStatus",l.name AS location,s.starts_at AS "shiftStart",s.ends_at AS "shiftEnd",pin.occurred_at AS "clockIn",pout.occurred_at AS "clockOut",pin.source,pin.within_geofence AS "withinGeofence",CASE WHEN e.status='ON_LEAVE' OR leave_request.id IS NOT NULL THEN 'ON_LEAVE' WHEN s.id IS NULL THEN 'UNSCHEDULED' WHEN pin.id IS NULL THEN 'ABSENT' WHEN pin.within_geofence=false THEN 'OUTSIDE_GEOFENCE' WHEN pin.occurred_at>s.starts_at+(s.grace_minutes||' minutes')::interval THEN 'LATE' WHEN pout.id IS NULL THEN 'ON_SHIFT' ELSE 'ON_TIME' END AS status FROM employees e LEFT JOIN locations l ON l.id=e.primary_location_id LEFT JOIN shifts s ON s.employee_id=e.id AND s.company_id=e.company_id AND s.starts_at::date=$2::date LEFT JOIN LATERAL (SELECT id FROM leave_requests lr WHERE lr.company_id=e.company_id AND lr.employee_id=e.id AND lr.status='APPROVED' AND $2::date BETWEEN lr.starts_on AND lr.ends_on LIMIT 1) leave_request ON true LEFT JOIN LATERAL (SELECT * FROM punches p WHERE p.employee_id=e.id AND p.occurred_at::date=$2::date AND p.event_type='CLOCK_IN' ORDER BY p.occurred_at LIMIT 1) pin ON true LEFT JOIN LATERAL (SELECT * FROM punches p WHERE p.employee_id=e.id AND p.occurred_at::date=$2::date AND p.event_type='CLOCK_OUT' ORDER BY p.occurred_at DESC LIMIT 1) pout ON true WHERE e.company_id=$1 AND e.status IN ('ACTIVE','ON_LEAVE') ORDER BY e.full_name`,
+      `SELECT e.id,e.full_name AS name,e.job_title AS role,e.status AS "employmentStatus",l.name AS location,s.starts_at AS "shiftStart",s.ends_at AS "shiftEnd",pin.occurred_at AS "clockIn",pout.occurred_at AS "clockOut",pin.source,pin.within_geofence AS "withinGeofence",pout.within_geofence AS "clockOutWithinGeofence",CASE WHEN e.status='ON_LEAVE' OR leave_request.id IS NOT NULL THEN 'ON_LEAVE' WHEN s.id IS NULL THEN 'UNSCHEDULED' WHEN pin.id IS NULL THEN 'ABSENT' WHEN pin.within_geofence=false THEN 'OUTSIDE_GEOFENCE' WHEN pin.occurred_at>s.starts_at+(s.grace_minutes||' minutes')::interval THEN 'LATE' WHEN pout.id IS NULL THEN 'ON_SHIFT' ELSE 'ON_TIME' END AS status FROM employees e LEFT JOIN locations l ON l.id=e.primary_location_id LEFT JOIN shifts s ON s.employee_id=e.id AND s.company_id=e.company_id AND s.starts_at::date=$2::date LEFT JOIN LATERAL (SELECT id FROM leave_requests lr WHERE lr.company_id=e.company_id AND lr.employee_id=e.id AND lr.status='APPROVED' AND $2::date BETWEEN lr.starts_on AND lr.ends_on LIMIT 1) leave_request ON true LEFT JOIN LATERAL (SELECT * FROM punches p WHERE p.employee_id=e.id AND p.occurred_at::date=$2::date AND p.event_type='CLOCK_IN' ORDER BY p.occurred_at LIMIT 1) pin ON true LEFT JOIN LATERAL (SELECT * FROM punches p WHERE p.employee_id=e.id AND p.occurred_at::date=$2::date AND p.event_type='CLOCK_OUT' ORDER BY p.occurred_at DESC LIMIT 1) pout ON true WHERE e.company_id=$1 AND e.status IN ('ACTIVE','ON_LEAVE') ORDER BY e.full_name`,
       [companyId, date],
     );
     response.json({ data: result.rows });
@@ -1004,7 +1082,7 @@ apiRouter.get(
       .parse(request.query.from);
     const to = z.string().date().optional().parse(request.query.to);
     const result = await pool.query(
-      `SELECT s.id,s.employee_id AS "employeeId",e.full_name AS employee,s.location_id AS "locationId",l.name AS location,s.starts_at AS "startsAt",s.ends_at AS "endsAt",s.unpaid_break_minutes AS "unpaidBreakMinutes",s.grace_minutes AS "graceMinutes",s.status FROM shifts s JOIN employees e ON e.id=s.employee_id LEFT JOIN locations l ON l.id=s.location_id WHERE s.company_id=$1 AND s.starts_at >= $2::date AND s.starts_at < COALESCE($3::date,$2::date+interval '7 days') ORDER BY s.starts_at,e.full_name`,
+      `SELECT s.id,s.employee_id AS "employeeId",e.full_name AS employee,s.location_id AS "locationId",l.name AS location,s.starts_at AS "startsAt",s.ends_at AS "endsAt",s.unpaid_break_minutes AS "unpaidBreakMinutes",s.grace_minutes AS "graceMinutes",s.live_tracking_enabled AS "liveTrackingEnabled",s.status FROM shifts s JOIN employees e ON e.id=s.employee_id LEFT JOIN locations l ON l.id=s.location_id WHERE s.company_id=$1 AND s.starts_at >= $2::date AND s.starts_at < COALESCE($3::date,$2::date+interval '7 days') ORDER BY s.starts_at,e.full_name`,
       [companyId, from, to],
     );
     response.json({ data: result.rows });
@@ -1019,6 +1097,7 @@ const shiftSchema = z
     endsAt: z.string().datetime({ offset: true }),
     unpaidBreakMinutes: z.number().int().min(0).max(600).default(60),
     graceMinutes: z.number().int().min(0).max(120).default(5),
+    liveTrackingEnabled: z.boolean().default(false),
     status: z.enum(["DRAFT", "PUBLISHED"]).default("DRAFT"),
   })
   .refine((value) => Date.parse(value.endsAt) > Date.parse(value.startsAt), {
@@ -1038,7 +1117,7 @@ apiRouter.post(
     if (overlap.rows[0])
       throw new HttpError(409, "This shift overlaps an existing assignment");
     const result = await pool.query(
-      `INSERT INTO shifts(company_id,employee_id,location_id,starts_at,ends_at,unpaid_break_minutes,grace_minutes,status,created_by) SELECT $1,e.id,l.id,$4,$5,$6,$7,$8,$9 FROM employees e CROSS JOIN locations l WHERE e.id=$2 AND e.company_id=$1 AND l.id=$3 AND l.company_id=$1 RETURNING id,employee_id AS "employeeId",location_id AS "locationId",starts_at AS "startsAt",ends_at AS "endsAt",status`,
+      `INSERT INTO shifts(company_id,employee_id,location_id,starts_at,ends_at,unpaid_break_minutes,grace_minutes,live_tracking_enabled,status,created_by) SELECT $1,e.id,l.id,$4,$5,$6,$7,$8,$9,$10 FROM employees e CROSS JOIN locations l WHERE e.id=$2 AND e.company_id=$1 AND l.id=$3 AND l.company_id=$1 RETURNING id,employee_id AS "employeeId",location_id AS "locationId",starts_at AS "startsAt",ends_at AS "endsAt",live_tracking_enabled AS "liveTrackingEnabled",status`,
       [
         companyId,
         input.employeeId,
@@ -1047,6 +1126,7 @@ apiRouter.post(
         input.endsAt,
         input.unpaidBreakMinutes,
         input.graceMinutes,
+        input.liveTrackingEnabled,
         input.status,
         sub,
       ],
@@ -1068,6 +1148,7 @@ const shiftUpdateSchema = z
     endsAt: z.string().datetime({ offset: true }),
     unpaidBreakMinutes: z.number().int().min(0).max(600),
     graceMinutes: z.number().int().min(0).max(120),
+    liveTrackingEnabled: z.boolean(),
   })
   .refine((value) => Date.parse(value.endsAt) > Date.parse(value.startsAt), {
     message: "Shift end must be after its start",
@@ -1107,13 +1188,14 @@ apiRouter.patch(
       if (!validLocation.rows[0])
         throw new HttpError(400, "Choose an active work location");
       const result = await client.query(
-        `UPDATE shifts SET location_id=$1,starts_at=$2,ends_at=$3,unpaid_break_minutes=$4,grace_minutes=$5,status='DRAFT',updated_at=now() WHERE id=$6 RETURNING id,employee_id AS "employeeId",location_id AS "locationId",starts_at AS "startsAt",ends_at AS "endsAt",unpaid_break_minutes AS "unpaidBreakMinutes",grace_minutes AS "graceMinutes",status`,
+        `UPDATE shifts SET location_id=$1,starts_at=$2,ends_at=$3,unpaid_break_minutes=$4,grace_minutes=$5,live_tracking_enabled=$6,status='DRAFT',updated_at=now() WHERE id=$7 RETURNING id,employee_id AS "employeeId",location_id AS "locationId",starts_at AS "startsAt",ends_at AS "endsAt",unpaid_break_minutes AS "unpaidBreakMinutes",grace_minutes AS "graceMinutes",live_tracking_enabled AS "liveTrackingEnabled",status`,
         [
           input.locationId,
           input.startsAt,
           input.endsAt,
           input.unpaidBreakMinutes,
           input.graceMinutes,
+          input.liveTrackingEnabled,
           id,
         ],
       );
@@ -1155,7 +1237,7 @@ apiRouter.post(
     const input = copyWeekSchema.parse(request.body);
     const { companyId, sub } = (request as AuthRequest).auth;
     const result = await pool.query(
-      `INSERT INTO shifts(company_id,employee_id,location_id,starts_at,ends_at,unpaid_break_minutes,grace_minutes,status,created_by) SELECT s.company_id,s.employee_id,s.location_id,s.starts_at+(($3::date-$2::date)*interval '1 day'),s.ends_at+(($3::date-$2::date)*interval '1 day'),s.unpaid_break_minutes,s.grace_minutes,'DRAFT',$4 FROM shifts s WHERE s.company_id=$1 AND s.status<>'CANCELLED' AND s.starts_at >= $2::date AND s.starts_at < $2::date+interval '7 days' AND NOT EXISTS(SELECT 1 FROM shifts existing WHERE existing.company_id=$1 AND existing.employee_id=s.employee_id AND existing.starts_at=s.starts_at+(($3::date-$2::date)*interval '1 day') AND existing.status<>'CANCELLED') RETURNING id`,
+      `INSERT INTO shifts(company_id,employee_id,location_id,starts_at,ends_at,unpaid_break_minutes,grace_minutes,live_tracking_enabled,status,created_by) SELECT s.company_id,s.employee_id,s.location_id,s.starts_at+(($3::date-$2::date)*interval '1 day'),s.ends_at+(($3::date-$2::date)*interval '1 day'),s.unpaid_break_minutes,s.grace_minutes,s.live_tracking_enabled,'DRAFT',$4 FROM shifts s WHERE s.company_id=$1 AND s.status<>'CANCELLED' AND s.starts_at >= $2::date AND s.starts_at < $2::date+interval '7 days' AND NOT EXISTS(SELECT 1 FROM shifts existing WHERE existing.company_id=$1 AND existing.employee_id=s.employee_id AND existing.starts_at=s.starts_at+(($3::date-$2::date)*interval '1 day') AND existing.status<>'CANCELLED') RETURNING id`,
       [companyId, input.sourceFrom, input.targetFrom, sub],
     );
     await pool.query(
@@ -1279,7 +1361,7 @@ apiRouter.get(
       [companyId],
     );
     const result = await pool.query(
-      `SELECT id,event_type AS "eventType",occurred_at AS "occurredAt",source,within_geofence AS "withinGeofence",note FROM punches WHERE company_id=$1 AND employee_id=$2 AND (occurred_at AT TIME ZONE $4)::date=$3::date ORDER BY occurred_at`,
+      `SELECT p.id,p.event_type AS "eventType",p.occurred_at AS "occurredAt",p.source,p.within_geofence AS "withinGeofence",p.note,EXISTS(SELECT 1 FROM attendance_face_verifications f WHERE f.punch_id=p.id) AS "hasFaceVerification" FROM punches p WHERE p.company_id=$1 AND p.employee_id=$2 AND (p.occurred_at AT TIME ZONE $4)::date=$3::date ORDER BY p.occurred_at`,
       [
         companyId,
         employeeId,
@@ -1473,11 +1555,9 @@ apiRouter.post(
         ],
       );
       await client.query("COMMIT");
-      response
-        .status(201)
-        .json({
-          data: { periodId: period.rows[0].id, created: created.rowCount ?? 0 },
-        });
+      response.status(201).json({
+        data: { periodId: period.rows[0].id, created: created.rowCount ?? 0 },
+      });
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;

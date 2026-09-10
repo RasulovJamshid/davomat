@@ -5,7 +5,6 @@ import {
   CircleDollarSign,
   Clock3,
   Coffee,
-  Command,
   FilePenLine,
   LoaderCircle,
   LogOut,
@@ -20,6 +19,7 @@ import { apiRequest, type SessionUser } from "./api";
 import { formatUzs } from "./domain/payroll";
 import { NotificationCenter } from "./Notifications";
 import { intlLocale, LanguageSwitcher, useI18n } from "./i18n";
+import { BrandMark } from "./BrandMark";
 
 type EventType = "CLOCK_IN" | "CLOCK_OUT" | "BREAK_START" | "BREAK_END";
 interface PortalShift {
@@ -86,8 +86,26 @@ interface PortalData {
   leaves: PortalLeave[];
   leaveBalance: { annualAllowance: number; annualUsed: number };
 }
-interface AvailabilityItem { id:string; startsAt:string; endsAt:string; availability:"AVAILABLE"|"UNAVAILABLE"|"PREFERRED"; note:string|null }
-interface SwapItem { id:string; shiftId:string; requester:string; requestedBy:string; offeredTo:string|null; acceptedBy:string|null; acceptedByName:string|null; reason:string|null; status:"OPEN"|"ACCEPTED"|"APPROVED"|"REJECTED"|"CANCELLED"; startsAt:string; endsAt:string }
+interface AvailabilityItem {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  availability: "AVAILABLE" | "UNAVAILABLE" | "PREFERRED";
+  note: string | null;
+}
+interface SwapItem {
+  id: string;
+  shiftId: string;
+  requester: string;
+  requestedBy: string;
+  offeredTo: string | null;
+  acceptedBy: string | null;
+  acceptedByName: string | null;
+  reason: string | null;
+  status: "OPEN" | "ACCEPTED" | "APPROVED" | "REJECTED" | "CANCELLED";
+  startsAt: string;
+  endsAt: string;
+}
 
 const eventLabels: Record<EventType, string> = {
   CLOCK_IN: "Clock in",
@@ -193,18 +211,236 @@ function ShiftList({
   );
 }
 
-function ScheduleSelfService({shifts,timeZone}:{shifts:PortalShift[];timeZone:string}){
-  const {t}=useI18n();const[availability,setAvailability]=useState<AvailabilityItem[]>([]);const[swaps,setSwaps]=useState<SwapItem[]>([]);const[error,setError]=useState("");const[saving,setSaving]=useState(false);
-  const[form,setForm]=useState({startsAt:localInputNow(),endsAt:localInputNow(),availability:"UNAVAILABLE" as AvailabilityItem["availability"],note:""});
-  const load=async()=>{try{const[a,s]=await Promise.all([apiRequest<AvailabilityItem[]>("/me/availability"),apiRequest<SwapItem[]>("/shift-swaps")]);setAvailability(a);setSwaps(s);}catch(reason){setError(reason instanceof Error?reason.message:t("loadRequestsFailed"));}};
-  useEffect(()=>{void load();},[]);
-  const execute=async(action:()=>Promise<unknown>)=>{setSaving(true);setError("");try{await action();await load();}catch(reason){setError(reason instanceof Error?reason.message:t("saveFailed"));}finally{setSaving(false);}};
-  const submitAvailability=(e:FormEvent)=>{e.preventDefault();return execute(()=>apiRequest("/me/availability",{method:"POST",body:JSON.stringify({...form,startsAt:new Date(form.startsAt).toISOString(),endsAt:new Date(form.endsAt).toISOString()})}));};
-  const format=new Intl.DateTimeFormat(undefined,{timeZone,dateStyle:"medium",timeStyle:"short"});
-  return <div className="portal-request-grid schedule-self-service">
-    <form className="portal-panel portal-correction-form" onSubmit={submitAvailability}><div><h3>{t("yourAvailability")}</h3><p>{t("availabilityDescription")}</p></div><label><span>{t("starts")}</span><input type="datetime-local" required value={form.startsAt} onChange={e=>setForm({...form,startsAt:e.target.value})}/></label><label><span>{t("ends")}</span><input type="datetime-local" required value={form.endsAt} onChange={e=>setForm({...form,endsAt:e.target.value})}/></label><label><span>{t("availability")}</span><select value={form.availability} onChange={e=>setForm({...form,availability:e.target.value as AvailabilityItem["availability"]})}><option value="UNAVAILABLE">{t("unavailable")}</option><option value="AVAILABLE">{t("available")}</option><option value="PREFERRED">{t("preferred")}</option></select></label><label><span>{t("note")}</span><input value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/></label><button className="portal-secondary full" disabled={saving}><Plus size={16}/>{t("addAvailability")}</button>{error&&<div className="portal-inline-error full"><X size={15}/>{error}</div>}<div className="compact-list full">{availability.map(a=><div key={a.id}><span><strong>{t(a.availability.toLowerCase())}</strong><small>{format.format(new Date(a.startsAt))} – {format.format(new Date(a.endsAt))}</small></span><button type="button" onClick={()=>void execute(()=>apiRequest(`/me/availability/${a.id}`,{method:"DELETE"}))}><X size={15}/></button></div>)}</div></form>
-    <section className="portal-panel"><div className="portal-panel-heading"><div><h2>{t("shiftSwaps")}</h2><p>{t("shiftSwapDescription")}</p></div></div><div className="portal-list">{shifts.filter(s=>Date.parse(s.startsAt)>Date.now()).map(shift=><article key={shift.id}><span className="portal-list-icon"><CalendarDays size={18}/></span><div><strong>{format.format(new Date(shift.startsAt))}</strong><p>{shift.location}</p></div><button className="portal-cancel-request" disabled={saving||swaps.some(s=>s.shiftId===shift.id&&["OPEN","ACCEPTED"].includes(s.status))} onClick={()=>void execute(()=>apiRequest("/me/shift-swaps",{method:"POST",body:JSON.stringify({shiftId:shift.id,reason:t("swapRequestedByEmployee")})}))}>{t("requestSwap")}</button></article>)}{swaps.filter(s=>s.status==="OPEN").map(s=><article key={s.id}><span className="portal-list-icon"><RefreshCw size={18}/></span><div><strong>{s.requester}</strong><p>{format.format(new Date(s.startsAt))} · {s.reason}</p></div><button className="portal-secondary" disabled={saving} onClick={()=>void execute(()=>apiRequest(`/me/shift-swaps/${s.id}/accept`,{method:"POST"}))}>{t("acceptSwap")}</button></article>)}</div></section>
-  </div>;
+function ScheduleSelfService({
+  shifts,
+  timeZone,
+}: {
+  shifts: PortalShift[];
+  timeZone: string;
+}) {
+  const { t } = useI18n();
+  const [availability, setAvailability] = useState<AvailabilityItem[]>([]);
+  const [swaps, setSwaps] = useState<SwapItem[]>([]);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    startsAt: localInputNow(),
+    endsAt: localInputNow(),
+    availability: "UNAVAILABLE" as AvailabilityItem["availability"],
+    note: "",
+  });
+  const load = async () => {
+    try {
+      const [a, s] = await Promise.all([
+        apiRequest<AvailabilityItem[]>("/me/availability"),
+        apiRequest<SwapItem[]>("/shift-swaps"),
+      ]);
+      setAvailability(a);
+      setSwaps(s);
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : t("loadRequestsFailed"),
+      );
+    }
+  };
+  useEffect(() => {
+    void load();
+  }, []);
+  const execute = async (action: () => Promise<unknown>) => {
+    setSaving(true);
+    setError("");
+    try {
+      await action();
+      await load();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : t("saveFailed"));
+    } finally {
+      setSaving(false);
+    }
+  };
+  const submitAvailability = (e: FormEvent) => {
+    e.preventDefault();
+    return execute(() =>
+      apiRequest("/me/availability", {
+        method: "POST",
+        body: JSON.stringify({
+          ...form,
+          startsAt: new Date(form.startsAt).toISOString(),
+          endsAt: new Date(form.endsAt).toISOString(),
+        }),
+      }),
+    );
+  };
+  const format = new Intl.DateTimeFormat(undefined, {
+    timeZone,
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+  return (
+    <div className="portal-request-grid schedule-self-service">
+      <form
+        className="portal-panel portal-correction-form"
+        onSubmit={submitAvailability}
+      >
+        <div>
+          <h3>{t("yourAvailability")}</h3>
+          <p>{t("availabilityDescription")}</p>
+        </div>
+        <label>
+          <span>{t("starts")}</span>
+          <input
+            type="datetime-local"
+            required
+            value={form.startsAt}
+            onChange={(e) => setForm({ ...form, startsAt: e.target.value })}
+          />
+        </label>
+        <label>
+          <span>{t("ends")}</span>
+          <input
+            type="datetime-local"
+            required
+            value={form.endsAt}
+            onChange={(e) => setForm({ ...form, endsAt: e.target.value })}
+          />
+        </label>
+        <label>
+          <span>{t("availability")}</span>
+          <select
+            value={form.availability}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                availability: e.target
+                  .value as AvailabilityItem["availability"],
+              })
+            }
+          >
+            <option value="UNAVAILABLE">{t("unavailable")}</option>
+            <option value="AVAILABLE">{t("available")}</option>
+            <option value="PREFERRED">{t("preferred")}</option>
+          </select>
+        </label>
+        <label>
+          <span>{t("note")}</span>
+          <input
+            value={form.note}
+            onChange={(e) => setForm({ ...form, note: e.target.value })}
+          />
+        </label>
+        <button className="portal-secondary full" disabled={saving}>
+          <Plus size={16} />
+          {t("addAvailability")}
+        </button>
+        {error && (
+          <div className="portal-inline-error full">
+            <X size={15} />
+            {error}
+          </div>
+        )}
+        <div className="compact-list full">
+          {availability.map((a) => (
+            <div key={a.id}>
+              <span>
+                <strong>{t(a.availability.toLowerCase())}</strong>
+                <small>
+                  {format.format(new Date(a.startsAt))} –{" "}
+                  {format.format(new Date(a.endsAt))}
+                </small>
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  void execute(() =>
+                    apiRequest(`/me/availability/${a.id}`, {
+                      method: "DELETE",
+                    }),
+                  )
+                }
+              >
+                <X size={15} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </form>
+      <section className="portal-panel">
+        <div className="portal-panel-heading">
+          <div>
+            <h2>{t("shiftSwaps")}</h2>
+            <p>{t("shiftSwapDescription")}</p>
+          </div>
+        </div>
+        <div className="portal-list">
+          {shifts
+            .filter((s) => Date.parse(s.startsAt) > Date.now())
+            .map((shift) => (
+              <article key={shift.id}>
+                <span className="portal-list-icon">
+                  <CalendarDays size={18} />
+                </span>
+                <div>
+                  <strong>{format.format(new Date(shift.startsAt))}</strong>
+                  <p>{shift.location}</p>
+                </div>
+                <button
+                  className="portal-cancel-request"
+                  disabled={
+                    saving ||
+                    swaps.some(
+                      (s) =>
+                        s.shiftId === shift.id &&
+                        ["OPEN", "ACCEPTED"].includes(s.status),
+                    )
+                  }
+                  onClick={() =>
+                    void execute(() =>
+                      apiRequest("/me/shift-swaps", {
+                        method: "POST",
+                        body: JSON.stringify({
+                          shiftId: shift.id,
+                          reason: t("swapRequestedByEmployee"),
+                        }),
+                      }),
+                    )
+                  }
+                >
+                  {t("requestSwap")}
+                </button>
+              </article>
+            ))}
+          {swaps
+            .filter((s) => s.status === "OPEN")
+            .map((s) => (
+              <article key={s.id}>
+                <span className="portal-list-icon">
+                  <RefreshCw size={18} />
+                </span>
+                <div>
+                  <strong>{s.requester}</strong>
+                  <p>
+                    {format.format(new Date(s.startsAt))} · {s.reason}
+                  </p>
+                </div>
+                <button
+                  className="portal-secondary"
+                  disabled={saving}
+                  onClick={() =>
+                    void execute(() =>
+                      apiRequest(`/me/shift-swaps/${s.id}/accept`, {
+                        method: "POST",
+                      }),
+                    )
+                  }
+                >
+                  {t("acceptSwap")}
+                </button>
+              </article>
+            ))}
+        </div>
+      </section>
+    </div>
+  );
 }
 
 function CorrectionForm({ onSaved }: { onSaved: () => Promise<void> }) {
@@ -682,10 +918,10 @@ export function EmployeePortal({
       <header className="portal-header">
         <div className="portal-brand">
           <span>
-            <Command size={20} />
+            <BrandMark />
           </span>
           <div>
-            <strong>Atlas</strong>
+            <strong>davomat.</strong>
             <small>{profile.companyName}</small>
           </div>
         </div>
@@ -799,11 +1035,7 @@ export function EmployeePortal({
                 </div>
               )}
               {mainAction && (
-                <button
-                  className="portal-clock-button"
-                  disabled={clocking}
-                  onClick={() => void punch(mainAction)}
-                >
+                <button className="portal-clock-button" disabled>
                   {clocking ? (
                     <LoaderCircle className="spinner" size={20} />
                   ) : mainAction === "BREAK_END" ? (
@@ -815,11 +1047,7 @@ export function EmployeePortal({
                 </button>
               )}
               {secondaryAction && (
-                <button
-                  className="portal-break-button"
-                  disabled={clocking}
-                  onClick={() => void punch(secondaryAction)}
-                >
+                <button className="portal-break-button" disabled>
                   <Coffee size={17} />
                   {t(eventTranslationKey[secondaryAction])}
                 </button>
@@ -827,6 +1055,9 @@ export function EmployeePortal({
               {clockMessage && (
                 <p className="portal-clock-message">{clockMessage}</p>
               )}
+              <p className="portal-clock-message">
+                {t("mobileSelfieRequired")}
+              </p>
               <div className="portal-privacy">
                 <ShieldCheck size={16} />
                 {t("locationPrivacy")}
@@ -877,15 +1108,21 @@ export function EmployeePortal({
           </div>
         )}
         {tab === "schedule" && (
-          <><section className="portal-panel portal-tab-panel">
-            <div className="portal-panel-heading">
-              <div>
-                <h2>{t("publishedSchedule")}</h2>
-                <p>{t("nextDays")}</p>
+          <>
+            <section className="portal-panel portal-tab-panel">
+              <div className="portal-panel-heading">
+                <div>
+                  <h2>{t("publishedSchedule")}</h2>
+                  <p>{t("nextDays")}</p>
+                </div>
               </div>
-            </div>
-            <ShiftList shifts={data.shifts} timeZone={profile.timezone} />
-          </section><ScheduleSelfService shifts={data.shifts} timeZone={profile.timezone}/></>
+              <ShiftList shifts={data.shifts} timeZone={profile.timezone} />
+            </section>
+            <ScheduleSelfService
+              shifts={data.shifts}
+              timeZone={profile.timezone}
+            />
+          </>
         )}
         {tab === "pay" && (
           <section className="portal-panel portal-tab-panel">

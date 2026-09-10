@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Check, Pencil, Trash2, X } from "lucide-react";
-import { apiRequest } from "./api";
+import { Camera, Check, Pencil, Trash2, X } from "lucide-react";
+import { apiRequest, readApiImage } from "./api";
+import { GeofenceStatus } from "./GeofenceStatus";
 import {
   deletePunch,
   fetchEmployeePunches,
@@ -51,6 +52,7 @@ export function AttendanceEventsModal({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState("");
+  const [photos, setPhotos] = useState<Record<string, string>>({});
   const load = () => {
     setLoading(true);
     Promise.all([
@@ -112,6 +114,19 @@ export function AttendanceEventsModal({
       setSaving("");
     }
   };
+  const showPhoto = async (id: string) => {
+    setSaving(id);
+    try {
+      const source = await readApiImage(`/punches/${id}/verification-photo`);
+      setPhotos((current) => ({ ...current, [id]: source }));
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : t("loadSelfieFailed"),
+      );
+    } finally {
+      setSaving("");
+    }
+  };
   return (
     <>
       <button
@@ -148,6 +163,10 @@ export function AttendanceEventsModal({
           ) : (
             items.map((item) => (
               <article key={item.id}>
+                <div className="event-geofence">
+                  <span>{t("geofenceCheck")}</span>
+                  <GeofenceStatus value={item.withinGeofence} />
+                </div>
                 <select
                   value={item.eventType}
                   onChange={(event) =>
@@ -206,6 +225,23 @@ export function AttendanceEventsModal({
                   <Trash2 size={15} />
                   {t("remove")}
                 </button>
+                {item.hasFaceVerification && (
+                  <button
+                    className="secondary-button"
+                    disabled={saving === item.id}
+                    onClick={() => void showPhoto(item.id)}
+                  >
+                    <Camera size={15} />
+                    {t("viewAttendanceSelfie")}
+                  </button>
+                )}
+                {photos[item.id] && (
+                  <img
+                    className="attendance-selfie"
+                    src={photos[item.id]}
+                    alt={t("attendanceSelfie")}
+                  />
+                )}
               </article>
             ))
           )}
