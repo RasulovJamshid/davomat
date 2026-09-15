@@ -20,7 +20,6 @@ import {
   LogOut,
   MapPin,
   Menu,
-  MoreHorizontal,
   Search,
   Settings,
   ShieldCheck,
@@ -55,6 +54,8 @@ import {
 } from "./operationsApi";
 import { recordPunch } from "./workforceApi";
 import { intlLocale, LanguageSwitcher, useI18n } from "./i18n";
+import { TasksPage } from "./TasksPage";
+import { WorkforceReport, WorkforceMetrics } from "./WorkforceReport";
 import { BrandMark } from "./BrandMark";
 
 const LiveLocationsMap = lazy(() =>
@@ -65,6 +66,8 @@ const LiveLocationsMap = lazy(() =>
 
 type Page =
   | "LiveLocations"
+  | "Tasks"
+  | "Reports"
   | "Overview"
   | "Attendance"
   | "Schedule"
@@ -160,10 +163,12 @@ function RequiredPasswordChange({ onComplete }: { onComplete: () => void }) {
 const navItems: Array<{ label: Page; icon: typeof Gauge }> = [
   { label: "Overview", icon: LayoutGrid },
   { label: "Attendance", icon: Clock3 },
-  { label: "LiveLocations", icon: MapPin },
   { label: "Schedule", icon: CalendarDays },
+  { label: "LiveLocations", icon: MapPin },
   { label: "Leave", icon: CalendarCheck },
   { label: "People", icon: UsersRound },
+  { label: "Tasks", icon: CalendarCheck },
+  { label: "Reports", icon: Download },
   { label: "Payroll", icon: CircleDollarSign },
   { label: "Advanced", icon: SlidersHorizontal },
 ];
@@ -178,6 +183,8 @@ const navGroups: Array<{
 
 const pageSlugs: Record<Page, string> = {
   LiveLocations: "live-locations",
+  Tasks: "tasks",
+  Reports: "reports",
   Overview: "overview",
   Attendance: "attendance",
   Schedule: "schedule",
@@ -212,6 +219,7 @@ const sourceTranslationKey = {
   MOBILE: "mobile",
   KIOSK: "faceKiosk",
   TURNSTILE: "turnstile",
+  WEB: "webBrowser",
   MANUAL: "manual",
   QR: "qrCode",
   UNRECORDED: "noRecord",
@@ -290,11 +298,6 @@ function Sidebar({
               >
                 <Icon size={18} />
                 <span>{t(label.toLowerCase())}</span>
-                <span className="nav-index" aria-hidden="true">
-                  {String(
-                    navItems.findIndex((item) => item.label === label) + 1,
-                  ).padStart(2, "0")}
-                </span>
                 {label === "Attendance" && exceptionCount > 0 && (
                   <span className="nav-count">{exceptionCount}</span>
                 )}
@@ -316,21 +319,6 @@ function Sidebar({
           <Settings size={18} />
           <span>{t("settings")}</span>
         </button>
-        <div className="help-card">
-          <span className="help-icon">
-            <Settings size={17} />
-          </span>
-          <p>{t("needHelp")}</p>
-          <span>{t("setupGuide")}</span>
-          <button
-            onClick={() => {
-              onPageChange("Settings");
-              onClose();
-            }}
-          >
-            {t("openSetup")}
-          </button>
-        </div>
         <div className="account">
           <Avatar
             initials={user.displayName
@@ -442,6 +430,9 @@ function Header({
           ref={searchRef}
           value={query}
           onChange={(event) => onSearch(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && query.trim()) onNavigate("People");
+          }}
           placeholder={t("searchPeople")}
         />
         <kbd>⌘ K</kbd>
@@ -470,20 +461,15 @@ function Header({
 
 function MobileNavigation({
   page,
-  open,
   onNavigate,
-  onMore,
 }: {
   page: Page;
-  open: boolean;
   onNavigate: (page: Page) => void;
-  onMore: () => void;
 }) {
   const { t } = useI18n();
   const items = navItems.filter((item) =>
-    ["Overview", "Attendance", "Schedule"].includes(item.label),
+    ["Overview", "Attendance", "Schedule", "People"].includes(item.label),
   );
-  const moreActive = !items.some((item) => item.label === page);
   return (
     <nav className="mobile-navigation" aria-label={t("quickNavigation")}>
       {items.map(({ label, icon: Icon }) => (
@@ -497,14 +483,6 @@ function MobileNavigation({
           <span>{t(label.toLowerCase())}</span>
         </button>
       ))}
-      <button
-        className={moreActive ? "active" : ""}
-        aria-expanded={open}
-        onClick={onMore}
-      >
-        <MoreHorizontal size={20} />
-        <span>{t("more")}</span>
-      </button>
     </nav>
   );
 }
@@ -840,6 +818,8 @@ function Overview({
   onReview,
   onPeople,
   onAttendance,
+  onSchedule,
+  onLiveLocations,
 }: {
   dashboard: DashboardData;
   records: EmployeeRow[];
@@ -851,6 +831,8 @@ function Overview({
   onReview: (id: string | number) => void;
   onPeople: () => void;
   onAttendance: () => void;
+  onSchedule: () => void;
+  onLiveLocations: () => void;
 }) {
   const { t } = useI18n();
   const workingPercent =
@@ -865,10 +847,23 @@ function Overview({
           <h1>{t("greeting", { name: user.displayName.split(" ")[0] })}</h1>
           <p>{t("overviewDescription")}</p>
         </div>
-        <button className="primary-button" onClick={onPeople}>
-          <UserRoundCheck size={17} />
-          {t("addEmployee")}
-        </button>
+        <div className="overview-heading-actions">
+          <button
+            className="primary-button"
+            onClick={() =>
+              exceptions.length ? onReview(exceptions[0].id) : onAttendance()
+            }
+          >
+            <ShieldCheck size={17} />
+            {exceptions.length
+              ? t("reviewIssuesCount", { count: exceptions.length })
+              : t("reviewTodayAttendance")}
+          </button>
+          <button className="secondary-button" onClick={onPeople}>
+            <UserRoundCheck size={17} />
+            {t("addEmployee")}
+          </button>
+        </div>
       </div>
       {error && (
         <div className="operations-error">
@@ -877,6 +872,36 @@ function Overview({
           <button onClick={onRetry}>{t("tryAgain")}</button>
         </div>
       )}
+      <section className="admin-start panel" aria-label={t("commonTasks")}>
+        <div>
+          <span>{t("startHere")}</span>
+          <strong>{t("commonTasks")}</strong>
+        </div>
+        <button onClick={onAttendance}>
+          <Clock3 size={18} />
+          <span>
+            <strong>{t("checkAttendance")}</strong>
+            <small>{t("checkAttendanceHelp")}</small>
+          </span>
+        </button>
+        <button onClick={onSchedule}>
+          <CalendarDays size={18} />
+          <span>
+            <strong>{t("planWork")}</strong>
+            <small>{t("planWorkHelp")}</small>
+          </span>
+        </button>
+        <button onClick={onLiveLocations}>
+          <MapPin size={18} />
+          <span>
+            <strong>{t("locateTeam")}</strong>
+            <small>{t("locateTeamHelp")}</small>
+          </span>
+        </button>
+      </section>
+      <p>
+        {t("totalEmployees")}: {dashboard.activeEmployees}
+      </p>
       <section className="metrics-grid">
         <MetricCard
           label={t("currentlyWorking")}
@@ -911,6 +936,7 @@ function Overview({
           onClick={() => onReview(exceptions[0]?.id ?? 0)}
         />
       </section>
+      <WorkforceMetrics />
       <div className="dashboard-grid">
         <AttendanceChart data={dashboard.weeklyAttendance} />
         <Exceptions items={exceptions} onReview={onReview} />
@@ -1096,10 +1122,7 @@ function WorkspaceApp({
           page={page}
           companyName={user.company.name}
           query={globalSearch}
-          onSearch={(value) => {
-            setGlobalSearch(value);
-            if (value) navigate("People");
-          }}
+          onSearch={setGlobalSearch}
           onNavigate={(next) => {
             if (next === "Attendance") setAttendanceDate(tashkentDate());
             navigate(next);
@@ -1124,6 +1147,8 @@ function WorkspaceApp({
                 setAttendanceTab("records");
                 setPage("Attendance");
               }}
+              onSchedule={() => navigate("Schedule")}
+              onLiveLocations={() => navigate("LiveLocations")}
             />
           )}
           {page === "Attendance" && (
@@ -1137,8 +1162,6 @@ function WorkspaceApp({
               onTabChange={setAttendanceTab}
               onResolve={resolveException}
               onRecordPunch={addPunch}
-              onOpenSchedule={openEmployeeSchedule}
-              onOpenEmployee={openEmployee}
             />
           )}
           {page === "LiveLocations" && (
@@ -1165,6 +1188,8 @@ function WorkspaceApp({
           {page === "Schedule" && (
             <SchedulePage initialEmployeeId={scheduleEmployeeId} />
           )}
+          {page === "Tasks" && <TasksPage />}
+          {page === "Reports" && <WorkforceReport />}
           {page === "Leave" && <LeavePage />}
           {page === "People" && (
             <PeoplePage
@@ -1195,12 +1220,7 @@ function WorkspaceApp({
           )}
         </main>
       </div>
-      <MobileNavigation
-        page={page}
-        open={menuOpen}
-        onNavigate={navigate}
-        onMore={() => setMenuOpen(true)}
-      />
+      <MobileNavigation page={page} onNavigate={navigate} />
       <div className={`toast ${resolutionToast ? "visible" : ""}`}>
         <Check size={17} />
         {resolutionToast}

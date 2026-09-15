@@ -376,6 +376,7 @@ export const updateEmployee = (
     status?: "ACTIVE" | "ON_LEAVE" | "INACTIVE";
     accessRole?: "EMPLOYEE" | "LOCATION_MANAGER" | "ADMINISTRATOR";
     jobTitle?: string;
+    salaryType?: "MONTHLY" | "HOURLY";
     baseSalary?: number;
     hourlyRate?: number;
   },

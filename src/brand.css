@@ -118,6 +118,9 @@ button:disabled {
   font: 12px var(--register-type);
   opacity: 0.7;
 }
+.nav-index {
+  display: none;
+}
 .nav-count {
   margin-left: 0;
   border-radius: 3px;
@@ -229,6 +232,67 @@ button:disabled {
 }
 .top-actions {
   gap: 8px;
+}
+.overview-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.admin-start {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.75fr) repeat(3, 1fr);
+  align-items: stretch;
+  margin-bottom: 24px;
+  padding: 0;
+  overflow: hidden;
+}
+.admin-start > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  padding: 20px;
+  background: var(--brand-soft);
+}
+.admin-start > div span {
+  color: var(--brand-accent);
+  font: 700 11px var(--register-type);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.admin-start > button {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  padding: 20px;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  text-align: left;
+}
+.admin-start > button:hover {
+  background: #f5f6ff;
+}
+.admin-start > button svg {
+  flex-shrink: 0;
+  color: var(--brand-accent);
+}
+.admin-start > button span {
+  display: grid;
+  gap: 5px;
+}
+.admin-start > button strong {
+  font-size: 14px;
+}
+.admin-start > button small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.page-switcher {
+  display: none;
 }
 .date-button {
   font-family: var(--register-type);
@@ -924,11 +988,42 @@ input[type="radio"] {
   .company-switcher {
     display: none;
   }
+  .admin-start {
+    grid-template-columns: 1fr;
+  }
+  .admin-start > div,
+  .admin-start > button {
+    border-left: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .dashboard-grid .exceptions-panel {
+    order: -1;
+  }
+  .settings-page,
+  .settings-grid,
+  .settings-card,
+  .settings-organization-grid,
+  .settings-jump-nav {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .overview-heading-actions {
+    width: 100%;
+  }
+  .overview-heading-actions > button {
+    flex: 1;
+  }
   .sidebar {
     box-shadow: 12px 0 28px #22272926;
   }
+  .content-shell {
+    height: calc(100dvh - 88px - env(safe-area-inset-bottom));
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
   main {
-    padding: 25px 16px 108px;
+    padding: 25px 16px 32px;
   }
   .welcome-row,
   .page-heading-row {

@@ -2,7 +2,7 @@ import type { AttendanceStatus, PunchSource } from "./domain/attendance";
 
 export type AttendanceUiStatus =
   AttendanceStatus | "ON_SHIFT" | "ON_LEAVE" | "UNSCHEDULED";
-export type AttendanceUiSource = PunchSource | "QR" | "UNRECORDED";
+export type AttendanceUiSource = PunchSource | "WEB" | "QR" | "UNRECORDED";
 
 export interface EmployeeRow {
   id: string;

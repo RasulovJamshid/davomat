@@ -10,6 +10,7 @@
     "bootstrap:prod": "node dist/cli/bootstrap.js",
     "seed:prod": "node dist/cli/seed.js",
     "test": "vitest run src",
+    "test:workforce": "node scripts/test-workforce.mjs",
     "migrate": "tsx src/cli/migrate.ts",
     "seed": "tsx src/cli/seed.ts"
   },
@@ -19,6 +20,7 @@
     "dotenv": "latest",
     "express": "latest",
     "express-rate-limit": "latest",
+    "firebase-admin": "^14.4.0",
     "helmet": "latest",
     "jsonwebtoken": "latest",
     "nodemailer": "^10.0.0",

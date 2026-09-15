@@ -32,6 +32,8 @@ import { apiRequest } from "./api";
 import { provisionEmployeeAccount, updateEmployee } from "./workforceApi";
 import { formatUzs } from "./domain/payroll";
 import { intlLocale, useI18n } from "./i18n";
+import { TasksPage } from "./TasksPage";
+import { WorkforceReport } from "./WorkforceReport";
 import { EmployeeActivity } from "./EmployeeActivity";
 
 type EmploymentStatus = "ACTIVE" | "ON_LEAVE" | "INVITED" | "INACTIVE";
@@ -53,6 +55,7 @@ interface Person {
   status: EmploymentStatus;
   access: "Employee" | "Location manager" | "Administrator";
   joined: string;
+  salaryType?: "MONTHLY" | "HOURLY";
   baseSalary: number;
   hourlyRate: number;
   accountEmail: string;
@@ -80,6 +83,7 @@ interface ApiEmployee {
   locationId: string | null;
   location: string | null;
   secondaryLocations: Array<{ id: string; name: string }>;
+  salaryType?: "MONTHLY" | "HOURLY";
   baseSalary: number;
   hourlyRate: number;
   accountEmail: string | null;
@@ -134,6 +138,7 @@ function toPerson(
               dateStyle: "medium",
             }).format(new Date(employee.joinedOn))
           : "NOT_STARTED",
+    salaryType: employee.salaryType ?? "MONTHLY",
     baseSalary: employee.baseSalary,
     hourlyRate: employee.hourlyRate,
     accountEmail: employee.accountEmail ?? "",
@@ -162,6 +167,7 @@ const emptyForm: EmployeeInput = {
   role: "",
   department: "",
   location: "",
+  salaryType: "MONTHLY",
   baseSalary: "",
   hourlyRate: "0",
 };
@@ -246,6 +252,7 @@ function AddEmployeeModal({
     event.preventDefault();
     const rawErrors = validateEmployee(form);
     const errorKeys: Record<keyof EmployeeInput, string> = {
+      salaryType: "salaryType",
       name: "employeeNameRequired",
       phone: "uzbekPhoneRequired",
       email: "validEmailRequired",
@@ -370,6 +377,18 @@ function AddEmployeeModal({
             error={errors.location}
             onChange={update}
           />
+          <label className="form-field">
+            <span>{t("salaryType")}</span>
+            <select
+              value={form.salaryType ?? "MONTHLY"}
+              onChange={(e) =>
+                update("salaryType", e.target.value as "MONTHLY" | "HOURLY")
+              }
+            >
+              <option value="MONTHLY">{t("fixedPay")}</option>
+              <option value="HOURLY">{t("hourlyPay")}</option>
+            </select>
+          </label>
           <label
             className={`form-field ${errors.baseSalary ? "has-error" : ""}`}
           >
@@ -387,7 +406,7 @@ function AddEmployeeModal({
           <label
             className={`form-field ${errors.hourlyRate ? "has-error" : ""}`}
           >
-            <span>{t("overtimeRate")} (UZS)</span>
+            <span>{t("hourlyRateLabel")} (UZS)</span>
             <input
               inputMode="numeric"
               value={form.hourlyRate}
@@ -441,6 +460,7 @@ function PersonProfile({
   departments,
   locations,
   onClose,
+  onRemove,
   onUpdate,
   onProvision,
   onOpenSchedule,
@@ -450,6 +470,7 @@ function PersonProfile({
   departments: DirectoryMeta["departments"];
   locations: DirectoryMeta["locations"];
   onClose: () => void;
+  onRemove: () => Promise<void>;
   onOpenSchedule?: (employeeId: string) => void;
   onOpenLiveLocations?: (employeeId: string, name?: string) => void;
   onUpdate: (input: {
@@ -460,6 +481,7 @@ function PersonProfile({
     departmentId: string;
     locationId: string;
     secondaryLocationIds: string[];
+    salaryType?: "MONTHLY" | "HOURLY";
     baseSalary: number;
     hourlyRate: number;
     status: "ACTIVE" | "ON_LEAVE" | "INACTIVE";
@@ -501,6 +523,7 @@ function PersonProfile({
   const [jobTitle, setJobTitle] = useState(person.jobTitle);
   const [departmentId, setDepartmentId] = useState(person.departmentId ?? "");
   const [locationId, setLocationId] = useState(person.locationId ?? "");
+  const [salaryType, setSalaryType] = useState(person.salaryType ?? "MONTHLY");
   const [baseSalary, setBaseSalary] = useState(String(person.baseSalary));
   const [hourlyRate, setHourlyRate] = useState(String(person.hourlyRate));
   const [secondaryLocationIds, setSecondaryLocationIds] = useState(() =>
@@ -574,6 +597,7 @@ function PersonProfile({
         secondaryLocationIds: secondaryLocationIds.filter(
           (id) => id !== locationId,
         ),
+        salaryType,
         baseSalary: Number(baseSalary),
         hourlyRate: Number(hourlyRate),
         status,
@@ -617,6 +641,11 @@ function PersonProfile({
   };
   return (
     <section className="employee-workspace">
+      {error && section !== "employmentDetails" && (
+        <p className="operations-error" role="alert">
+          {error}
+        </p>
+      )}
       <button className="text-button employee-back" onClick={onClose}>
         <ArrowLeft size={18} />
         {t("backToPeople")}
@@ -627,6 +656,25 @@ function PersonProfile({
           <h1>{person.name}</h1>
         </div>
         <div className="employee-quick-actions">
+          {person.status !== "INACTIVE" && (
+            <button
+              className="secondary-button"
+              disabled={saving}
+              onClick={async () => {
+                if (!window.confirm(t("removeEmployeeConfirm"))) return;
+                setSaving(true);
+                try {
+                  await onRemove();
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : t("loadFailed"));
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              {t("removeEmployee")}
+            </button>
+          )}
           {onOpenSchedule && (
             <button
               className="secondary-button"
@@ -676,7 +724,13 @@ function PersonProfile({
           ),
         )}
       </div>
-      {section === "attendance" && <EmployeeActivity employeeId={person.id} />}
+      {section === "attendance" && (
+        <>
+          <EmployeeActivity employeeId={person.id} />
+          <WorkforceReport employeeId={person.id} />
+          <TasksPage employeeId={person.id} />
+        </>
+      )}
       <div hidden={section !== "overview"} className="employee-overview">
         <section className="profile-section">
           <h3>{t("contactDetails")}</h3>
@@ -815,6 +869,18 @@ function PersonProfile({
             </div>
           </fieldset>
           <label className="form-field">
+            <span>{t("salaryType")}</span>
+            <select
+              value={salaryType}
+              onChange={(e) =>
+                setSalaryType(e.target.value as "MONTHLY" | "HOURLY")
+              }
+            >
+              <option value="MONTHLY">{t("fixedPay")}</option>
+              <option value="HOURLY">{t("hourlyPay")}</option>
+            </select>
+          </label>
+          <label className="form-field">
             <span>{t("monthlySalary")}</span>
             <input
               type="number"
@@ -825,7 +891,7 @@ function PersonProfile({
             />
           </label>
           <label className="form-field">
-            <span>{t("overtimeRate")}</span>
+            <span>{t("hourlyRateLabel")}</span>
             <input
               type="number"
               min="0"
@@ -990,7 +1056,7 @@ function PersonProfile({
             <dd>{formatUzs(person.baseSalary)}</dd>
           </div>
           <div>
-            <dt>{t("overtimeRate")}</dt>
+            <dt>{t("hourlyRateLabel")}</dt>
             <dd>
               {formatUzs(person.hourlyRate)}/{t("hour")}
             </dd>
@@ -1101,6 +1167,7 @@ export function PeoplePage({
         jobTitle: input.role,
         departmentId,
         locationId,
+        salaryType: input.salaryType ?? "MONTHLY",
         baseSalary: Number(input.baseSalary.replace(/\s/g, "")),
         hourlyRate: Number(input.hourlyRate.replace(/\s/g, "")),
       }),
@@ -1119,6 +1186,7 @@ export function PeoplePage({
     departmentId: string;
     locationId: string;
     secondaryLocationIds: string[];
+    salaryType?: "MONTHLY" | "HOURLY";
     baseSalary: number;
     hourlyRate: number;
     status: "ACTIVE" | "ON_LEAVE" | "INACTIVE";
@@ -1191,6 +1259,11 @@ export function PeoplePage({
         departments={meta.departments}
         locations={meta.locations}
         onClose={() => setSelected(null)}
+        onRemove={async () => {
+          await apiRequest(`/employees/${selected.id}`, { method: "DELETE" });
+          await loadDirectory();
+          setSelected(null);
+        }}
         onUpdate={updateSelected}
         onProvision={provisionSelected}
         onOpenSchedule={onOpenSchedule}

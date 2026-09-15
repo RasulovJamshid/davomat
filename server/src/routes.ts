@@ -11,6 +11,10 @@ import {
 import { pool } from "./db.js";
 import { asyncHandler, HttpError } from "./http.js";
 import { employeeRouter } from "./employeeRoutes.js";
+import { taskRouter } from "./taskRoutes.js";
+import { mobileManagementRouter } from "./mobileManagementRoutes.js";
+import { pushRouter } from "./push.js";
+import { webPunchRouter } from "./webPunchRoutes.js";
 import { notificationRouter } from "./notificationRoutes.js";
 import { sendPasswordReset } from "./mailer.js";
 import { config } from "./config.js";
@@ -31,17 +35,15 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (request, response) =>
-    response
-      .status(429)
-      .json({
-        error: {
-          code: "LOGIN_RATE_LIMITED",
-          message: localize(
-            request,
-            "Too many sign-in attempts. Try again later",
-          ),
-        },
-      }),
+    response.status(429).json({
+      error: {
+        code: "LOGIN_RATE_LIMITED",
+        message: localize(
+          request,
+          "Too many sign-in attempts. Try again later",
+        ),
+      },
+    }),
 });
 const recoveryLimiter = rateLimit({
   windowMs: 15 * 60_000,
@@ -49,17 +51,15 @@ const recoveryLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (request, response) =>
-    response
-      .status(429)
-      .json({
-        error: {
-          code: "RECOVERY_RATE_LIMITED",
-          message: localize(
-            request,
-            "Too many recovery attempts. Try again later",
-          ),
-        },
-      }),
+    response.status(429).json({
+      error: {
+        code: "RECOVERY_RATE_LIMITED",
+        message: localize(
+          request,
+          "Too many recovery attempts. Try again later",
+        ),
+      },
+    }),
 });
 const loginSchema = z
   .object({
@@ -108,12 +108,7 @@ apiRouter.post(
     const user = result.rows[0];
     if (!user || !(await bcrypt.compare(input.password, user.password_hash)))
       throw new HttpError(401, "Invalid email or password");
-    if (input.clientType === "MOBILE") {
-      if (user.role !== "EMPLOYEE")
-        throw new HttpError(
-          403,
-          "The mobile app is only available to employees",
-        );
+    if (input.clientType === "MOBILE" && user.role === "EMPLOYEE") {
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
@@ -259,6 +254,10 @@ apiRouter.post(
 );
 
 apiRouter.use(requireAuth);
+apiRouter.use(taskRouter);
+apiRouter.use(mobileManagementRouter);
+apiRouter.use(pushRouter);
+apiRouter.use(webPunchRouter);
 apiRouter.use(employeeRouter);
 apiRouter.use(notificationRouter);
 apiRouter.use(advancedRouter);
@@ -590,7 +589,14 @@ apiRouter.get(
       pool.query(
         `SELECT
       (SELECT count(*)::int FROM employees WHERE company_id=$1 AND status='ACTIVE') AS "activeEmployees",
+      (SELECT count(*)::int FROM employees WHERE company_id=$1 AND status<>'INACTIVE') AS "totalEmployees",
+      (SELECT count(*)::int FROM employee_tasks WHERE company_id=$1 AND status<>'DONE') AS "activeTasks",
+      (SELECT count(*)::int FROM employee_tasks WHERE company_id=$1 AND status='DONE') AS "completedTasks",
+      (SELECT COALESCE(sum(w.worked_minutes),0)::float/60 FROM companies c CROSS JOIN LATERAL workforce_summary($1,date_trunc('month',now() AT TIME ZONE c.timezone)::date,(date_trunc('month',now() AT TIME ZONE c.timezone)+interval '1 month - 1 day')::date) w WHERE c.id=$1) AS "monthlyHours",
+      (SELECT COALESCE(sum(w.salary),0)::float FROM companies c CROSS JOIN LATERAL workforce_summary($1,date_trunc('month',now() AT TIME ZONE c.timezone)::date,(date_trunc('month',now() AT TIME ZONE c.timezone)+interval '1 month - 1 day')::date) w WHERE c.id=$1) AS "monthlySalary",
+      (SELECT currency FROM companies WHERE id=$1) AS currency,
       (SELECT count(DISTINCT employee_id)::int FROM punches WHERE company_id=$1 AND occurred_at::date=CURRENT_DATE AND event_type='CLOCK_IN') AS "workingToday",
+      (SELECT count(*)::int FROM employees e JOIN LATERAL (SELECT p.event_type FROM punches p WHERE p.company_id=$1 AND p.employee_id=e.id AND p.event_type IN ('CLOCK_IN','CLOCK_OUT') AND p.occurred_at<=now() ORDER BY p.occurred_at DESC, p.created_at DESC LIMIT 1) latest ON latest.event_type='CLOCK_IN' WHERE e.company_id=$1 AND e.status='ACTIVE') AS "workingNow",
       (SELECT count(*)::int FROM shifts s JOIN LATERAL (SELECT occurred_at FROM punches p WHERE p.shift_id=s.id AND p.event_type='CLOCK_IN' ORDER BY occurred_at LIMIT 1) pin ON true WHERE s.company_id=$1 AND s.starts_at::date=CURRENT_DATE AND pin.occurred_at>s.starts_at+(s.grace_minutes||' minutes')::interval) AS "lateToday",
       (SELECT count(*)::int FROM shifts s JOIN employees e ON e.id=s.employee_id LEFT JOIN punches p ON p.shift_id=s.id AND p.event_type='CLOCK_IN' WHERE s.company_id=$1 AND s.starts_at::date=CURRENT_DATE AND s.status<>'CANCELLED' AND e.status='ACTIVE' AND p.id IS NULL AND NOT EXISTS(SELECT 1 FROM leave_requests lr WHERE lr.company_id=$1 AND lr.employee_id=e.id AND lr.status='APPROVED' AND CURRENT_DATE BETWEEN lr.starts_on AND lr.ends_on)) AS "absentToday",
       (SELECT count(*)::int FROM employees e WHERE e.company_id=$1 AND (e.status='ON_LEAVE' OR EXISTS(SELECT 1 FROM leave_requests lr WHERE lr.company_id=$1 AND lr.employee_id=e.id AND lr.status='APPROVED' AND CURRENT_DATE BETWEEN lr.starts_on AND lr.ends_on))) AS "approvedLeave",
@@ -634,7 +640,7 @@ apiRouter.get(
       where += ` AND e.status=$${values.length}`;
     }
     const result = await pool.query(
-      `SELECT e.id,e.employee_number AS "employeeNumber",e.full_name AS name,e.phone,e.email,e.job_title AS "jobTitle",e.access_role AS "accessRole",e.status,e.joined_on AS "joinedOn",e.base_salary AS "baseSalary",e.hourly_rate AS "hourlyRate",u.email AS "accountEmail",COALESCE(u.active,false) AS "accountActive",d.id AS "departmentId",d.name AS department,l.id AS "locationId",l.name AS location,COALESCE((SELECT json_agg(json_build_object('id',sl.id,'name',sl.name) ORDER BY sl.name) FROM employee_locations el JOIN locations sl ON sl.id=el.location_id WHERE el.employee_id=e.id),'[]') AS "secondaryLocations" FROM employees e LEFT JOIN users u ON u.id=e.user_id LEFT JOIN departments d ON d.id=e.department_id LEFT JOIN locations l ON l.id=e.primary_location_id WHERE ${where} ORDER BY e.created_at DESC`,
+      `SELECT e.id,e.employee_number AS "employeeNumber",e.full_name AS name,e.phone,e.email,e.job_title AS "jobTitle",e.access_role AS "accessRole",e.status,e.joined_on AS "joinedOn",e.salary_type AS "salaryType",e.base_salary AS "baseSalary",e.hourly_rate AS "hourlyRate",u.email AS "accountEmail",COALESCE(u.active,false) AS "accountActive",d.id AS "departmentId",d.name AS department,l.id AS "locationId",l.name AS location,COALESCE((SELECT json_agg(json_build_object('id',sl.id,'name',sl.name) ORDER BY sl.name) FROM employee_locations el JOIN locations sl ON sl.id=el.location_id WHERE el.employee_id=e.id),'[]') AS "secondaryLocations" FROM employees e LEFT JOIN users u ON u.id=e.user_id LEFT JOIN departments d ON d.id=e.department_id LEFT JOIN locations l ON l.id=e.primary_location_id WHERE ${where} ORDER BY e.created_at DESC`,
       values,
     );
     response.json({ data: result.rows });
@@ -652,6 +658,7 @@ const employeeSchema = z.object({
   accessRole: z
     .enum(["EMPLOYEE", "LOCATION_MANAGER", "ADMINISTRATOR"])
     .default("EMPLOYEE"),
+  salaryType: z.enum(["MONTHLY", "HOURLY"]).default("MONTHLY"),
   baseSalary: z.number().int().min(0).default(0),
   hourlyRate: z.number().int().min(0).default(0),
 });
@@ -672,7 +679,7 @@ apiRouter.post(
         [companyId],
       );
       const result = await client.query(
-        `INSERT INTO employees(company_id,employee_number,full_name,phone,email,job_title,department_id,primary_location_id,access_role,status,joined_on,base_salary,hourly_rate) SELECT $1,$2,$3,$4,NULLIF($5,''),$6,d.id,l.id,$9,'ACTIVE',CURRENT_DATE,$10,$11 FROM departments d CROSS JOIN locations l WHERE d.id=$7 AND d.company_id=$1 AND l.id=$8 AND l.company_id=$1 RETURNING id,employee_number AS "employeeNumber",full_name AS name,phone,email,job_title AS "jobTitle",access_role AS "accessRole",status,base_salary AS "baseSalary",hourly_rate AS "hourlyRate"`,
+        `INSERT INTO employees(company_id,employee_number,full_name,phone,email,job_title,department_id,primary_location_id,access_role,status,joined_on,base_salary,hourly_rate,salary_type) SELECT $1,$2,$3,$4,NULLIF($5,''),$6,d.id,l.id,$9,'ACTIVE',CURRENT_DATE,$10,$11,$12 FROM departments d CROSS JOIN locations l WHERE d.id=$7 AND d.company_id=$1 AND l.id=$8 AND l.company_id=$1 RETURNING id,employee_number AS "employeeNumber",full_name AS name,phone,email,job_title AS "jobTitle",access_role AS "accessRole",status,base_salary AS "baseSalary",hourly_rate AS "hourlyRate"`,
         [
           companyId,
           `NR-${String(count.rows[0].next).padStart(4, "0")}`,
@@ -685,6 +692,7 @@ apiRouter.post(
           input.accessRole,
           input.baseSalary,
           input.hourlyRate,
+          input.salaryType,
         ],
       );
       if (!result.rows[0])
@@ -749,6 +757,7 @@ const employeeUpdateSchema = z
       .enum(["EMPLOYEE", "LOCATION_MANAGER", "ADMINISTRATOR"])
       .optional(),
     jobTitle: z.string().trim().min(2).max(80).optional(),
+    salaryType: z.enum(["MONTHLY", "HOURLY"]).optional(),
     baseSalary: z.number().int().min(0).optional(),
     hourlyRate: z.number().int().min(0).optional(),
   })
@@ -787,7 +796,7 @@ apiRouter.patch(
           throw new HttpError(400, "Location is not active for this company");
       }
       const result = await client.query(
-        `UPDATE employees SET full_name=COALESCE($1,full_name),phone=COALESCE($2,phone),email=CASE WHEN $3::text IS NULL THEN email ELSE NULLIF($3,'') END,department_id=COALESCE($4,department_id),primary_location_id=COALESCE($5,primary_location_id),status=COALESCE($6,status),access_role=COALESCE($7,access_role),job_title=COALESCE($8,job_title),base_salary=COALESCE($9,base_salary),hourly_rate=COALESCE($10,hourly_rate),joined_on=CASE WHEN $6='ACTIVE' AND joined_on IS NULL THEN CURRENT_DATE ELSE joined_on END,updated_at=now() WHERE id=$11 AND company_id=$12 RETURNING id,full_name AS name,phone,email,department_id AS "departmentId",primary_location_id AS "locationId",status,access_role AS "accessRole",job_title AS "jobTitle",base_salary AS "baseSalary",hourly_rate AS "hourlyRate"`,
+        `UPDATE employees SET full_name=COALESCE($1,full_name),phone=COALESCE($2,phone),email=CASE WHEN $3::text IS NULL THEN email ELSE NULLIF($3,'') END,department_id=COALESCE($4,department_id),primary_location_id=COALESCE($5,primary_location_id),status=COALESCE($6,status),access_role=COALESCE($7,access_role),job_title=COALESCE($8,job_title),base_salary=COALESCE($9,base_salary),hourly_rate=COALESCE($10,hourly_rate),salary_type=COALESCE($13,salary_type),joined_on=CASE WHEN $6='ACTIVE' AND joined_on IS NULL THEN CURRENT_DATE ELSE joined_on END,updated_at=now() WHERE id=$11 AND company_id=$12 RETURNING id,full_name AS name,phone,email,department_id AS "departmentId",primary_location_id AS "locationId",status,access_role AS "accessRole",job_title AS "jobTitle",base_salary AS "baseSalary",hourly_rate AS "hourlyRate"`,
         [
           input.name ?? null,
           input.phone ?? null,
@@ -801,6 +810,7 @@ apiRouter.patch(
           input.hourlyRate ?? null,
           id,
           companyId,
+          input.salaryType ?? null,
         ],
       );
       if (input.secondaryLocationIds) {

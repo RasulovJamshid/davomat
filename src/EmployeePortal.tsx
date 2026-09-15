@@ -19,6 +19,8 @@ import { apiRequest, type SessionUser } from "./api";
 import { formatUzs } from "./domain/payroll";
 import { NotificationCenter } from "./Notifications";
 import { intlLocale, LanguageSwitcher, useI18n } from "./i18n";
+import { TasksPage } from "./TasksPage";
+import { WorkforceReport } from "./WorkforceReport";
 import { BrandMark } from "./BrandMark";
 
 type EventType = "CLOCK_IN" | "CLOCK_OUT" | "BREAK_START" | "BREAK_END";
@@ -140,6 +142,7 @@ const sourceTranslationKey: Record<string, string> = {
   MOBILE: "mobile",
   KIOSK: "faceKiosk",
   TURNSTILE: "turnstile",
+  WEB: "webBrowser",
   MANUAL: "manual",
   QR: "qrCode",
 };
@@ -780,9 +783,9 @@ export function EmployeePortal({
   const [error, setError] = useState("");
   const [clocking, setClocking] = useState(false);
   const [clockMessage, setClockMessage] = useState("");
-  const [tab, setTab] = useState<"home" | "schedule" | "pay" | "requests">(
-    "home",
-  );
+  const [tab, setTab] = useState<
+    "home" | "schedule" | "pay" | "requests" | "tasks" | "hours"
+  >("home");
   const load = async () => {
     setError("");
     try {
@@ -811,7 +814,11 @@ export function EmployeePortal({
         : [],
     [data],
   );
-  const lastEvent = todaysPunches.at(-1)?.eventType ?? "NONE";
+  const latest = data?.punches[0];
+  const lastEvent =
+    latest && latest.eventType !== "CLOCK_OUT"
+      ? latest.eventType
+      : (todaysPunches.at(-1)?.eventType ?? "NONE");
   const mainAction: EventType | null =
     lastEvent === "NONE"
       ? "CLOCK_IN"
@@ -839,36 +846,15 @@ export function EmployeePortal({
       minute: "2-digit",
       hour12: false,
     }).format(new Date(value));
-  const requestCoordinates = () =>
-    new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
-      if (!navigator.geolocation) return resolve(null);
-      navigator.geolocation.getCurrentPosition(
-        (position) =>
-          resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          }),
-        () => resolve(null),
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60_000 },
-      );
-    });
   const punch = async (eventType: EventType) => {
     setClocking(true);
-    setClockMessage(t("checkingLocation"));
+    setClockMessage(t("savingClockEvent"));
     try {
-      const coordinates = await requestCoordinates();
-      setClockMessage(t("savingClockEvent"));
-      const result = await apiRequest<{ withinGeofence: boolean | null }>(
-        "/me/punches",
-        { method: "POST", body: JSON.stringify({ eventType, ...coordinates }) },
-      );
-      setClockMessage(
-        result.withinGeofence === false
-          ? t("recordedOutsideLocation")
-          : result.withinGeofence === null
-            ? t("recordedLocationUnavailable")
-            : t("recordedLocationVerified"),
-      );
+      await apiRequest("/me/web-punches", {
+        method: "POST",
+        body: JSON.stringify({ eventType }),
+      });
+      setClockMessage(t("webPunchSaved"));
       await load();
     } catch (reason) {
       setClockMessage(
@@ -963,6 +949,18 @@ export function EmployeePortal({
         )}
         <nav className="portal-tabs">
           <button
+            className={tab === "tasks" ? "active" : ""}
+            onClick={() => setTab("tasks")}
+          >
+            {t("tasks")}
+          </button>
+          <button
+            className={tab === "hours" ? "active" : ""}
+            onClick={() => setTab("hours")}
+          >
+            {t("myWorkHours")}
+          </button>
+          <button
             className={tab === "home" ? "active" : ""}
             onClick={() => setTab("home")}
           >
@@ -991,6 +989,8 @@ export function EmployeePortal({
             {t("requests")}
           </button>
         </nav>
+        {tab === "tasks" && <TasksPage employee />}
+        {tab === "hours" && <WorkforceReport employee />}
         {tab === "home" && (
           <div className="portal-home-grid">
             <section className="portal-clock-card">
@@ -1035,7 +1035,11 @@ export function EmployeePortal({
                 </div>
               )}
               {mainAction && (
-                <button className="portal-clock-button" disabled>
+                <button
+                  className="portal-clock-button"
+                  disabled={clocking}
+                  onClick={() => void punch(mainAction)}
+                >
                   {clocking ? (
                     <LoaderCircle className="spinner" size={20} />
                   ) : mainAction === "BREAK_END" ? (
@@ -1043,11 +1047,21 @@ export function EmployeePortal({
                   ) : (
                     <Navigation size={20} />
                   )}{" "}
-                  {t(eventTranslationKey[mainAction])}
+                  {t(
+                    mainAction === "CLOCK_IN"
+                      ? "startWorkingDay"
+                      : mainAction === "CLOCK_OUT"
+                        ? "finishWorkingDay"
+                        : eventTranslationKey[mainAction],
+                  )}
                 </button>
               )}
               {secondaryAction && (
-                <button className="portal-break-button" disabled>
+                <button
+                  className="portal-break-button"
+                  disabled={clocking}
+                  onClick={() => void punch(secondaryAction)}
+                >
                   <Coffee size={17} />
                   {t(eventTranslationKey[secondaryAction])}
                 </button>
@@ -1055,12 +1069,10 @@ export function EmployeePortal({
               {clockMessage && (
                 <p className="portal-clock-message">{clockMessage}</p>
               )}
-              <p className="portal-clock-message">
-                {t("mobileSelfieRequired")}
-              </p>
+              <p className="portal-clock-message">{t("webAttendanceHint")}</p>
               <div className="portal-privacy">
                 <ShieldCheck size={16} />
-                {t("locationPrivacy")}
+                {t("webAttendanceHint")}
               </div>
             </section>
             <section className="portal-panel">

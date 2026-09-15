@@ -6065,3 +6065,143 @@ th,
     grid-template-columns: 1fr;
   }
 }
+.workforce-page {
+  display: grid;
+  gap: 24px;
+}
+.workforce-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 16px;
+  margin: 16px 0;
+}
+.workforce-fields > * {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+.workforce-task-form,
+.workforce-report,
+.workforce-task {
+  padding: 24px;
+}
+.workforce-task-form > .form-field {
+  margin-bottom: 16px;
+}
+.workforce-task-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 16px;
+}
+.workforce-task h2 {
+  margin: 18px 0 12px;
+  overflow-wrap: anywhere;
+}
+.workforce-task p {
+  margin-bottom: 14px;
+  overflow-wrap: anywhere;
+}
+.task-description {
+  white-space: pre-wrap;
+}
+.task-priority {
+  border-radius: 6px;
+  padding: 5px 10px;
+  background: #e9eef3;
+}
+.priority-HIGH,
+.task-overdue {
+  color: #ad3348;
+}
+.priority-HIGH {
+  background: #fce8ec;
+}
+.priority-LOW {
+  color: #247b64;
+  background: #e5f5ed;
+}
+.workforce-report {
+  margin: 20px 0;
+}
+.workforce-report .page-heading-row {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.workforce-report > p {
+  margin: 12px 0;
+  color: #64748b;
+}
+.workforce-report table {
+  min-width: 1050px;
+}
+.workforce-metrics > div {
+  padding: 20px;
+}
+.workforce-metrics strong {
+  display: block;
+  font-size: 24px;
+  margin-top: 12px;
+}
+.portal-tabs {
+  flex-wrap: wrap;
+}
+@media print {
+  body:has(.workforce-report) {
+    background: white !important;
+  }
+  body:has(.workforce-report)
+    *:not(:has(.workforce-report)):not(.workforce-report):not(
+      .workforce-report *
+    ) {
+    display: none !important;
+  }
+  body:has(.workforce-report) *::before,
+  body:has(.workforce-report) *::after {
+    display: none !important;
+  }
+  body:has(.workforce-report) *:has(.workforce-report) {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+  body:has(.workforce-report) * {
+    visibility: hidden;
+  }
+  body:has(.workforce-report) .workforce-report,
+  body:has(.workforce-report) .workforce-report * {
+    visibility: visible;
+  }
+  body:has(.workforce-report) .workforce-report {
+    position: static;
+    top: 0;
+    left: 0;
+    width: 100%;
+    border: 0;
+    padding: 0;
+    background: white;
+  }
+  body:has(.workforce-report) .workforce-report .no-print,
+  body:has(.workforce-report) .workforce-report .no-print * {
+    display: none;
+  }
+  .workforce-report .table-wrap {
+    overflow: visible;
+  }
+  .workforce-report table {
+    min-width: 0;
+    width: 100%;
+    font-size: 9px;
+  }
+  .workforce-report th,
+  .workforce-report td {
+    white-space: normal;
+    padding: 6px;
+  }
+  @page {
+    size: A4 landscape;
+    margin: 12mm;
+  }
+}

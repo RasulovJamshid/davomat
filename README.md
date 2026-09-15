@@ -23,12 +23,20 @@ secured Node API and PostgreSQL database.
 - Company, editable department/work-location, geofence, currency, timezone, leave,
   correction-window, payroll-tax-policy, and password setup
 - Persistent or browser-session login selected by the user
-- Flutter employee app with camera-only attendance selfies, precise GPS punches,
+- Flutter employee and management app with camera-only attendance selfies, precise GPS punches,
   one-active-device-per-account enforcement, breaks, schedules, payslips, and requests
 - Per-shift live-location authorization with an employee-visible tracking indicator,
   background mobile updates, and a manager live map; only the latest point is retained
-- Manager-only attendance selfie review and audited employee device reset; browser
-  self-punching is disabled so it cannot bypass mobile verification
+- Manager-only attendance selfie review and audited employee device reset
+- Browser clock-in/out and breaks, recorded with server time and a separate WEB source;
+  mobile attendance continues to require its device, selfie and GPS verification
+- Assigned employee tasks with deadlines, priorities, NEW → IN_PROGRESS → DONE
+  transitions, manager status control and employee-scoped access
+- Explicit fixed/hourly pay types and actual-hours salary calculation; monthly fixed
+  pay is prorated against the employee's published monthly schedule
+- Employee period summaries with attendance, lateness, absences, overtime, completed
+  tasks and estimated base pay; Excel-compatible CSV and print-to-PDF export
+- Employee removal archives the profile, disables login and retains attendance/payroll history
 - Manager-controlled employee login provisioning, credential resets, and SMTP invitation delivery
 - Approved employee corrections atomically create the requested timesheet event
 - Employee leave requests with configurable annual balance, date-overlap protection,
@@ -126,6 +134,9 @@ the production Compose file.
 
 See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for backups, restores, upgrades,
 health checks, and production hardening.
+
+Requirements mapping, calculation rules and validation for tasks and employee reports:
+[docs/WORKFORCE_REQUIREMENTS_RU.md](docs/WORKFORCE_REQUIREMENTS_RU.md).
 
 ## Commands
 

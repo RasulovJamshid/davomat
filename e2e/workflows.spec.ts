@@ -31,38 +31,38 @@ test("manager can navigate every operational workspace and switch language", asy
   ).toBeVisible();
   const workspaceSwitcher = page.getByLabel("Go to workspace");
   await expect(workspaceSwitcher).toHaveValue("Overview");
-  await workspaceSwitcher.selectOption("Payroll");
+  const initialMenu = page.getByRole("button", { name: "Open menu" });
+  if (await initialMenu.isVisible()) await initialMenu.click();
+  await page
+    .locator("aside")
+    .getByRole("button", { name: "Payroll", exact: true })
+    .click();
   await expect(page).toHaveURL(/#\/payroll$/);
   await expect(
     page.getByRole("heading", { name: "Payroll", exact: true }),
   ).toBeVisible();
   await page.goBack();
   await expect(workspaceSwitcher).toHaveValue("Overview");
-  for (const name of [
-    "Attendance",
-    "Schedule",
-    "Leave",
-    "People",
-    "Payroll",
-    "Settings",
+  for (const [menuName, headingName] of [
+    ["Attendance", "Attendance"],
+    ["Work schedule", "Work schedule"],
+    ["Live locations", "Live locations"],
+    ["Leave requests", "Leave requests"],
+    ["Employees", "Employees"],
+    ["Payroll", "Payroll"],
+    ["Settings", "Settings"],
   ]) {
     const menu = page.getByRole("button", { name: "Open menu" });
     if (await menu.isVisible()) await menu.click();
     await page
       .locator("aside")
-      .getByRole("button", { name: new RegExp(name) })
+      .getByRole("button", { name: new RegExp(`^${menuName}`) })
       .first()
       .click();
     await expect(pageErrors).toEqual([]);
     await expect(
-      page.getByRole("heading", { name, exact: true }),
+      page.getByRole("heading", { name: headingName, exact: true }),
     ).toBeVisible();
-    if (name === "Attendance") {
-      await page.getByRole("tab", { name: "Live map" }).click();
-      await expect(
-        page.getByRole("heading", { name: "Live locations" }),
-      ).toBeVisible();
-    }
   }
   await expect(page.locator(".location-map.leaflet-container")).toBeVisible();
   await expect(
@@ -94,6 +94,55 @@ test("employee can open all self-service workspaces", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("admin workspaces do not collide or overflow on a narrow phone", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.goto("/");
+  await page.getByLabel("Email address").fill("admin@atlas.local");
+  await page
+    .locator('input[autocomplete="current-password"]')
+    .fill("ChangeMe123!");
+  await page.getByRole("button", { name: /Sign in/ }).click();
+  await page.locator(".content-shell").waitFor();
+
+  for (const slug of [
+    "overview",
+    "attendance",
+    "schedule",
+    "live-locations",
+    "leave",
+    "people",
+    "payroll",
+    "advanced",
+    "settings",
+  ]) {
+    await page.goto(`/#/${slug}`);
+    await page.locator(".content-shell").waitFor();
+    const layout = await page.evaluate(() => {
+      const content = document
+        .querySelector(".content-shell")!
+        .getBoundingClientRect();
+      const navigation = document
+        .querySelector(".mobile-navigation")!
+        .getBoundingClientRect();
+      return {
+        overflow: document.documentElement.scrollWidth - window.innerWidth,
+        collision:
+          Math.min(content.bottom, navigation.bottom) -
+          Math.max(content.top, navigation.top),
+      };
+    });
+    expect(layout.overflow, `${slug} horizontal overflow`).toBeLessThanOrEqual(
+      0,
+    );
+    expect(
+      layout.collision,
+      `${slug} navigation collision`,
+    ).toBeLessThanOrEqual(0);
+  }
+});
+
 test("advanced workforce controls are reachable", async ({ page }) => {
   await page.goto("/");
   await page.getByLabel("Email address").fill("admin@atlas.local");
@@ -108,10 +157,10 @@ test("advanced workforce controls are reachable", async ({ page }) => {
   if (await menu.isVisible()) await menu.click();
   await page
     .locator("aside")
-    .getByRole("button", { name: /Advanced/ })
+    .getByRole("button", { name: "Tools & reports", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Advanced operations" }),
+    page.getByRole("heading", { name: "Tools & reports" }),
   ).toBeVisible();
   for (const name of ["Devices", "Payroll rules"]) {
     await page.locator(".advanced-tabs").getByRole("button", { name }).click();
@@ -150,13 +199,14 @@ test("dashboard action controls open their complete workflows", async ({
     await page.keyboard.press("Control+K");
     await expect(globalSearch).toBeFocused();
     await globalSearch.fill("Aziza");
+    await globalSearch.press("Enter");
     await expect(
-      page.getByRole("heading", { name: "People", exact: true }),
+      page.getByRole("heading", { name: "Employees", exact: true }),
     ).toBeVisible();
     await globalSearch.fill("");
     await page
       .locator("aside.sidebar")
-      .getByRole("button", { name: /Overview/ })
+      .getByRole("button", { name: /Today/ })
       .first()
       .click();
   }
@@ -171,7 +221,7 @@ test("dashboard action controls open their complete workflows", async ({
   if (await menu.isVisible()) await menu.click();
   await page
     .locator("aside.sidebar")
-    .getByRole("button", { name: /Overview/ })
+    .getByRole("button", { name: /Today/ })
     .first()
     .click();
   await page.getByRole("button", { name: /Currently working/ }).click();

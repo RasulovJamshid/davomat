@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import {
   CalendarDays,
   Check,
@@ -22,18 +22,11 @@ import { intlLocale, useI18n } from "./i18n";
 import { AttendanceEventsModal } from "./AttendanceEventsModal";
 import { GeofenceStatus } from "./GeofenceStatus";
 
-export type AttendanceTab = "records" | "exceptions" | "live";
-const LiveLocationsMap = lazy(() =>
-  import("./LiveLocationsMap").then((module) => ({
-    default: module.LiveLocationsMap,
-  })),
-);
+export type AttendanceTab = "records" | "exceptions";
 type RecordFilter = "all" | "working" | "attention";
 type Resolution = "approved" | "rejected";
 
 interface AttendancePageProps {
-  onOpenSchedule?: (employeeId?: string) => void;
-  onOpenEmployee?: (employeeId: string) => void;
   date: string;
   exceptions: ExceptionItem[];
   records: EmployeeRow[];
@@ -69,6 +62,7 @@ const sourceTranslationKey = {
   MOBILE: "mobile",
   KIOSK: "faceKiosk",
   TURNSTILE: "turnstile",
+  WEB: "webBrowser",
   MANUAL: "manual",
   QR: "qrCode",
   UNRECORDED: "noRecord",
@@ -78,6 +72,7 @@ const sourceIcon = {
   MOBILE: Smartphone,
   KIOSK: ScanFace,
   TURNSTILE: DoorOpen,
+  WEB: UserRoundCheck,
   MANUAL: UserRoundCheck,
   QR: Smartphone,
   UNRECORDED: Clock3,
@@ -799,8 +794,6 @@ function PunchModal({
 }
 
 export function AttendancePage({
-  onOpenSchedule,
-  onOpenEmployee,
   date,
   exceptions,
   records,
@@ -859,14 +852,6 @@ export function AttendancePage({
           {t("exceptions")}{" "}
           <span className="alert-count">{exceptions.length}</span>
         </button>
-        <button
-          role="tab"
-          aria-selected={tab === "live"}
-          className={tab === "live" ? "active" : ""}
-          onClick={() => onTabChange("live")}
-        >
-          <MapPin size={15} /> {t("liveMap")}
-        </button>
       </div>
       {tab === "records" ? (
         <RecordsView records={records} loading={loading} date={date} />
@@ -899,16 +884,7 @@ export function AttendancePage({
             </div>
           )}
         </div>
-      ) : (
-        <Suspense
-          fallback={<div className="panel all-clear">{t("loading")}</div>}
-        >
-          <LiveLocationsMap
-            onOpenSchedule={onOpenSchedule}
-            onOpenEmployee={onOpenEmployee}
-          />
-        </Suspense>
-      )}
+      ) : null}
       {recording && (
         <PunchModal
           records={records}

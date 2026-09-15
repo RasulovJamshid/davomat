@@ -192,7 +192,7 @@ test("live map explains setup when empty and locates a reporting employee", asyn
       },
     }),
   );
-  await page.getByLabel("Go to workspace").selectOption("LiveLocations");
+  await page.goto("/#/live-locations");
   await page.getByRole("button", { name: "Locate on map" }).click();
   await expect(
     page.locator(".live-employee-list article.selected"),
@@ -205,7 +205,7 @@ test("live map explains setup when empty and locates a reporting employee", asyn
   ).toBeVisible();
   await page.getByRole("button", { name: "Back to people" }).click();
   await expect(
-    page.getByRole("heading", { name: "People", exact: true }),
+    page.getByRole("heading", { name: "Employees", exact: true }),
   ).toBeVisible();
 });
 

@@ -148,9 +148,7 @@ async function employeeForUser(userId: string, companyId: string) {
 employeeRouter.get(
   "/me/workspace",
   asyncHandler(async (request, response) => {
-    const { sub, companyId, role } = (request as AuthRequest).auth;
-    if (role !== "EMPLOYEE")
-      throw new HttpError(403, "Employee access required");
+    const { sub, companyId } = (request as AuthRequest).auth;
     const employeeId = await employeeForUser(sub, companyId);
     const [
       profile,
@@ -179,8 +177,8 @@ employeeRouter.get(
       ),
       pool.query(
         `SELECT id,shift_id AS "shiftId",event_type AS "eventType",occurred_at AS "occurredAt",source,within_geofence AS "withinGeofence"
-       FROM punches WHERE company_id=$1 AND employee_id=$2 AND occurred_at>=CURRENT_DATE-interval '7 days'
-       ORDER BY occurred_at DESC LIMIT 40`,
+       FROM punches WHERE company_id=$1 AND employee_id=$2 AND (occurred_at>=CURRENT_DATE-interval '35 days' OR id=(SELECT id FROM punches WHERE company_id=$1 AND employee_id=$2 ORDER BY occurred_at DESC,created_at DESC,id DESC LIMIT 1))
+       ORDER BY occurred_at DESC,created_at DESC,id DESC LIMIT 500`,
         [companyId, employeeId],
       ),
       pool.query(
@@ -244,9 +242,7 @@ employeeRouter.post(
   "/me/punches",
   asyncHandler(async (request, response) => {
     const input = selfPunchSchema.parse(request.body);
-    const { sub, companyId, role } = (request as AuthRequest).auth;
-    if (role !== "EMPLOYEE")
-      throw new HttpError(403, "Employee access required");
+    const { sub, companyId } = (request as AuthRequest).auth;
     const client = await pool.connect();
     try {
       await client.query("BEGIN");

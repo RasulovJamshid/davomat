@@ -72,7 +72,7 @@ export function AdvancedPage() {
   const { t } = useI18n();
   const [tab, setTab] = useState<
     "devices" | "payroll" | "scheduling" | "reports"
-  >("devices");
+  >("reports");
   const [devices, setDevices] = useState<Device[]>([]);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [reports, setReports] = useState<Report[]>([]);

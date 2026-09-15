@@ -5,6 +5,7 @@ import { logger } from "./logger.js";
 import { runMigrations } from "./migrations.js";
 import { seedDatabase } from "./seed.js";
 import { startReportScheduler } from "./reportScheduler.js";
+import { startPushWorker } from "./push.js";
 
 async function start(): Promise<void> {
   await pool.query("SELECT 1");
@@ -12,9 +13,10 @@ async function start(): Promise<void> {
   if (config.runSeed) await seedDatabase();
   const server = createApp().listen(config.PORT, "0.0.0.0", () => logger.info({ port: config.PORT }, "Atlas API listening"));
   const reportTimer=startReportScheduler();
+  const pushTimer=startPushWorker();
   const shutdown = (signal: string) => {
     logger.info({ signal }, "graceful shutdown started");
-    clearInterval(reportTimer);server.close(() => { void closeDatabase().finally(() => process.exit(0)); });
+    clearInterval(reportTimer);clearInterval(pushTimer);server.close(() => { void closeDatabase().finally(() => process.exit(0)); });
     setTimeout(() => process.exit(1), 10_000).unref();
   };
   process.on("SIGTERM", () => shutdown("SIGTERM"));
