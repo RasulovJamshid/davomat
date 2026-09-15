@@ -14,6 +14,7 @@ import {
 import { apiRequest, downloadApiFile } from "./api";
 import { fetchSchedule } from "./workforceApi";
 import { tashkentDate } from "./operationsApi";
+import { scheduleText } from "./scheduleCopy";
 import { useI18n } from "./i18n";
 
 type Device = {
@@ -58,18 +59,9 @@ type Swap = {
   startsAt: string;
   endsAt: string;
 };
-type WorkweekTemplate = {
-  weekdays: number[];
-  startsAt: string;
-  endsAt: string;
-  unpaidBreakMinutes: number;
-  graceMinutes: number;
-  locationId: string | null;
-};
-
 const today = () => new Date().toISOString().slice(0, 10);
 export function AdvancedPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [tab, setTab] = useState<
     "devices" | "payroll" | "scheduling" | "reports"
   >("reports");
@@ -92,9 +84,6 @@ export function AdvancedPage() {
   const [locations, setLocations] = useState<
     Array<{ id: string; name: string }>
   >([]);
-  const [departments, setDepartments] = useState<
-    Array<{ id: string; name: string }>
-  >([]);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -110,39 +99,6 @@ export function AdvancedPage() {
     date: today(),
     name: "",
     paid: true,
-  });
-  const [recurring, setRecurring] = useState({
-    employeeId: "",
-    locationId: "",
-    weekdays: [1, 2, 3, 4, 5],
-    startsAt: "09:00",
-    endsAt: "18:00",
-    effectiveFrom: today(),
-  });
-  const [workweek, setWorkweek] = useState<WorkweekTemplate>({
-    weekdays: [1, 2, 3, 4, 5],
-    startsAt: "08:00",
-    endsAt: "17:00",
-    unpaidBreakMinutes: 60,
-    graceMinutes: 5,
-    locationId: null,
-  });
-  const [workweekScope, setWorkweekScope] = useState<{
-    scope: "ALL" | "DEPARTMENT" | "LOCATION";
-    scopeId: string;
-    effectiveFrom: string;
-    effectiveUntil: string;
-    replaceExisting: boolean;
-  }>({
-    scope: "ALL",
-    scopeId: "",
-    effectiveFrom: today(),
-    effectiveUntil: "",
-    replaceExisting: true,
-  });
-  const [materialize, setMaterialize] = useState({
-    from: today(),
-    to: today(),
   });
   const [report, setReport] = useState({
     name: "",
@@ -175,33 +131,22 @@ export function AdvancedPage() {
     setError("");
     try {
       const schedule = await fetchSchedule(tashkentDate(), tashkentDate());
-      const [d, r, h, rep, s, w] = await Promise.all([
+      const [d, r, h, rep, s] = await Promise.all([
         apiRequest<Device[]>("/devices"),
         apiRequest<Rule>("/payroll-rules"),
         apiRequest<Holiday[]>("/holidays"),
         apiRequest<Report[]>("/reports"),
         apiRequest<Swap[]>("/shift-swaps"),
-        apiRequest<WorkweekTemplate>("/workweek-template"),
       ]);
       setDevices(d);
       setRule(r);
       setHolidays(h);
       setReports(rep);
       setSwaps(s);
-      setWorkweek({
-        ...w,
-        startsAt: w.startsAt.slice(0, 5),
-        endsAt: w.endsAt.slice(0, 5),
-      });
       setEmployees(schedule.employees);
       setLocations(schedule.meta.locations);
-      setDepartments(schedule.meta.departments);
+
       const first = schedule.employees[0]?.id || "";
-      setRecurring((v) => ({
-        ...v,
-        employeeId: v.employeeId || first,
-        locationId: v.locationId || schedule.meta.locations[0]?.id || "",
-      }));
       setDevice((v) => ({
         ...v,
         locationId: v.locationId || schedule.meta.locations[0]?.id || "",
@@ -277,79 +222,6 @@ export function AdvancedPage() {
           body: JSON.stringify(rule),
         }),
       t("payrollRulesSaved"),
-    );
-  };
-  const saveWorkweek = (e: FormEvent) => {
-    e.preventDefault();
-    return run(
-      () =>
-        apiRequest("/workweek-template", {
-          method: "PUT",
-          body: JSON.stringify(workweek),
-        }),
-      t("workweekSaved"),
-    );
-  };
-  const applyWorkweek = async (e: FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setError("");
-    try {
-      await apiRequest("/workweek-template", {
-        method: "PUT",
-        body: JSON.stringify(workweek),
-      });
-      const result = await apiRequest<{ matched: number; created: number }>(
-        "/workweek-template/apply",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            ...workweekScope,
-            scopeId:
-              workweekScope.scope === "ALL" ? null : workweekScope.scopeId,
-            effectiveUntil: workweekScope.effectiveUntil || null,
-          }),
-        },
-      );
-      setMessage(
-        t("workweekAppliedCount", {
-          count: result.created,
-          matched: result.matched,
-        }),
-      );
-      window.setTimeout(() => setMessage(""), 2500);
-      await load();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : t("saveFailed"));
-    } finally {
-      setSaving(false);
-    }
-  };
-  const addRecurring = (e: FormEvent) => {
-    e.preventDefault();
-    return run(
-      () =>
-        apiRequest("/recurring-schedules", {
-          method: "POST",
-          body: JSON.stringify({
-            ...recurring,
-            locationId: recurring.locationId || null,
-            unpaidBreakMinutes: 60,
-            graceMinutes: 5,
-          }),
-        }),
-      t("recurringSaved"),
-    );
-  };
-  const generateRecurring = (e: FormEvent) => {
-    e.preventDefault();
-    return run(
-      () =>
-        apiRequest("/recurring-schedules/materialize", {
-          method: "POST",
-          body: JSON.stringify(materialize),
-        }),
-      t("shiftsGenerated"),
     );
   };
   const addReport = (e: FormEvent) => {
@@ -873,343 +745,15 @@ export function AdvancedPage() {
       )}
       {tab === "scheduling" && (
         <div className="advanced-grid">
-          <form
-            className="panel advanced-form workweek-card"
-            onSubmit={saveWorkweek}
-          >
-            <div>
-              <h2>{t("companyWorkweek")}</h2>
-              <p className="muted-copy">{t("companyWorkweekDescription")}</p>
-            </div>
-            <div className="weekday-picker">
-              {[1, 2, 3, 4, 5, 6, 7].map((day) => (
-                <button
-                  type="button"
-                  className={workweek.weekdays.includes(day) ? "active" : ""}
-                  key={day}
-                  onClick={() =>
-                    setWorkweek({
-                      ...workweek,
-                      weekdays: workweek.weekdays.includes(day)
-                        ? workweek.weekdays.length === 1
-                          ? workweek.weekdays
-                          : workweek.weekdays.filter((x) => x !== day)
-                        : [...workweek.weekdays, day].sort(),
-                    })
-                  }
-                >
-                  {t(`weekday${day}`)}
-                </button>
-              ))}
-            </div>
-            <div className="field-grid">
-              <label className="form-field">
-                <span>{t("workdayStarts")}</span>
-                <input
-                  required
-                  type="time"
-                  value={workweek.startsAt}
-                  onChange={(e) =>
-                    setWorkweek({ ...workweek, startsAt: e.target.value })
-                  }
-                />
-              </label>
-              <label className="form-field">
-                <span>{t("workdayEnds")}</span>
-                <input
-                  required
-                  type="time"
-                  value={workweek.endsAt}
-                  onChange={(e) =>
-                    setWorkweek({ ...workweek, endsAt: e.target.value })
-                  }
-                />
-              </label>
-            </div>
-            <div className="field-grid">
-              <label className="form-field">
-                <span>{t("unpaidBreakMinutes")}</span>
-                <input
-                  required
-                  type="number"
-                  min="0"
-                  max="480"
-                  value={workweek.unpaidBreakMinutes}
-                  onChange={(e) =>
-                    setWorkweek({
-                      ...workweek,
-                      unpaidBreakMinutes: Number(e.target.value),
-                    })
-                  }
-                />
-              </label>
-              <label className="form-field">
-                <span>{t("graceMinutes")}</span>
-                <input
-                  required
-                  type="number"
-                  min="0"
-                  max="120"
-                  value={workweek.graceMinutes}
-                  onChange={(e) =>
-                    setWorkweek({
-                      ...workweek,
-                      graceMinutes: Number(e.target.value),
-                    })
-                  }
-                />
-              </label>
-            </div>
-            <label className="form-field">
-              <span>{t("defaultWorkLocation")}</span>
-              <select
-                value={workweek.locationId || ""}
-                onChange={(e) =>
-                  setWorkweek({
-                    ...workweek,
-                    locationId: e.target.value || null,
-                  })
-                }
-              >
-                <option value="">{t("employeePrimaryLocation")}</option>
-                {locations.map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {x.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button className="primary-button" disabled={saving}>
-              {t("saveWorkweek")}
-            </button>
-          </form>
-          <form className="panel advanced-form" onSubmit={applyWorkweek}>
-            <h2>{t("applyCompanyWorkweek")}</h2>
-            <label className="form-field">
-              <span>{t("applyTo")}</span>
-              <select
-                value={workweekScope.scope}
-                onChange={(e) =>
-                  setWorkweekScope({
-                    ...workweekScope,
-                    scope: e.target.value as "ALL" | "DEPARTMENT" | "LOCATION",
-                    scopeId: "",
-                  })
-                }
-              >
-                <option value="ALL">{t("allActiveEmployees")}</option>
-                <option value="DEPARTMENT">{t("department")}</option>
-                <option value="LOCATION">{t("workLocation")}</option>
-              </select>
-            </label>
-            {workweekScope.scope === "DEPARTMENT" && (
-              <label className="form-field">
-                <span>{t("department")}</span>
-                <select
-                  required
-                  value={workweekScope.scopeId}
-                  onChange={(e) =>
-                    setWorkweekScope({
-                      ...workweekScope,
-                      scopeId: e.target.value,
-                    })
-                  }
-                >
-                  <option value="">—</option>
-                  {departments.map((x) => (
-                    <option key={x.id} value={x.id}>
-                      {x.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            {workweekScope.scope === "LOCATION" && (
-              <label className="form-field">
-                <span>{t("workLocation")}</span>
-                <select
-                  required
-                  value={workweekScope.scopeId}
-                  onChange={(e) =>
-                    setWorkweekScope({
-                      ...workweekScope,
-                      scopeId: e.target.value,
-                    })
-                  }
-                >
-                  <option value="">—</option>
-                  {locations.map((x) => (
-                    <option key={x.id} value={x.id}>
-                      {x.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <div className="field-grid">
-              <label className="form-field">
-                <span>{t("effectiveFrom")}</span>
-                <input
-                  required
-                  type="date"
-                  value={workweekScope.effectiveFrom}
-                  onChange={(e) =>
-                    setWorkweekScope({
-                      ...workweekScope,
-                      effectiveFrom: e.target.value,
-                    })
-                  }
-                />
-              </label>
-              <label className="form-field">
-                <span>{t("effectiveUntilOptional")}</span>
-                <input
-                  type="date"
-                  min={workweekScope.effectiveFrom}
-                  value={workweekScope.effectiveUntil}
-                  onChange={(e) =>
-                    setWorkweekScope({
-                      ...workweekScope,
-                      effectiveUntil: e.target.value,
-                    })
-                  }
-                />
-              </label>
-            </div>
-            <label className="checkbox-row">
-              <input
-                type="checkbox"
-                checked={workweekScope.replaceExisting}
-                onChange={(e) =>
-                  setWorkweekScope({
-                    ...workweekScope,
-                    replaceExisting: e.target.checked,
-                  })
-                }
-              />
-              {t("replaceRecurringSchedules")}
-            </label>
-            <p className="muted-copy">{t("applyWorkweekHelp")}</p>
-            <button className="primary-button" disabled={saving}>
-              {t("applyWorkweek")}
-            </button>
-          </form>
-          <form className="panel advanced-form" onSubmit={addRecurring}>
-            <h2>{t("individualRecurringSchedule")}</h2>
-            <label className="form-field">
-              <span>{t("employee")}</span>
-              <select
-                value={recurring.employeeId}
-                onChange={(e) =>
-                  setRecurring({ ...recurring, employeeId: e.target.value })
-                }
-              >
-                {employees.map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {x.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="form-field">
-              <span>{t("workLocation")}</span>
-              <select
-                value={recurring.locationId}
-                onChange={(e) =>
-                  setRecurring({ ...recurring, locationId: e.target.value })
-                }
-              >
-                {locations.map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {x.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="weekday-picker">
-              {[1, 2, 3, 4, 5, 6, 7].map((day) => (
-                <button
-                  type="button"
-                  className={recurring.weekdays.includes(day) ? "active" : ""}
-                  key={day}
-                  onClick={() =>
-                    setRecurring({
-                      ...recurring,
-                      weekdays: recurring.weekdays.includes(day)
-                        ? recurring.weekdays.filter((x) => x !== day)
-                        : [...recurring.weekdays, day],
-                    })
-                  }
-                >
-                  {t(`weekday${day}`)}
-                </button>
-              ))}
-            </div>
-            <div className="field-grid">
-              <label className="form-field">
-                <span>{t("starts")}</span>
-                <input
-                  type="time"
-                  value={recurring.startsAt}
-                  onChange={(e) =>
-                    setRecurring({ ...recurring, startsAt: e.target.value })
-                  }
-                />
-              </label>
-              <label className="form-field">
-                <span>{t("ends")}</span>
-                <input
-                  type="time"
-                  value={recurring.endsAt}
-                  onChange={(e) =>
-                    setRecurring({ ...recurring, endsAt: e.target.value })
-                  }
-                />
-              </label>
-            </div>
-            <label className="form-field">
-              <span>{t("effectiveFrom")}</span>
-              <input
-                type="date"
-                value={recurring.effectiveFrom}
-                onChange={(e) =>
-                  setRecurring({ ...recurring, effectiveFrom: e.target.value })
-                }
-              />
-            </label>
-            <button className="primary-button" disabled={saving}>
-              {t("saveRecurring")}
-            </button>
-          </form>
+          <section className="panel weekly-relocation">
+            <CalendarClock size={30} />
+            <h2>{scheduleText(locale, "moved")}</h2>
+            <p>{scheduleText(locale, "help")}</p>
+            <a className="primary-button" href="#schedule">
+              {scheduleText(locale, "open")}
+            </a>
+          </section>
           <div>
-            <form className="panel advanced-form" onSubmit={generateRecurring}>
-              <h2>{t("generateFromTemplates")}</h2>
-              <div className="field-grid">
-                <label className="form-field">
-                  <span>{t("from")}</span>
-                  <input
-                    type="date"
-                    value={materialize.from}
-                    onChange={(e) =>
-                      setMaterialize({ ...materialize, from: e.target.value })
-                    }
-                  />
-                </label>
-                <label className="form-field">
-                  <span>{t("to")}</span>
-                  <input
-                    type="date"
-                    value={materialize.to}
-                    onChange={(e) =>
-                      setMaterialize({ ...materialize, to: e.target.value })
-                    }
-                  />
-                </label>
-              </div>
-              <button className="primary-button" disabled={saving}>
-                {t("generateShifts")}
-              </button>
-            </form>
             <section className="panel advanced-list">
               <h2>{t("shiftSwapApprovals")}</h2>
               {swaps.length ? (

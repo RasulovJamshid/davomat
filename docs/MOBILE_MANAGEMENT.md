@@ -1,10 +1,11 @@
 # Native management completion
 
-The Flutter project is in `D:/Projects/clockmanagement-mobile`. API migration `019_mobile_management.sql` adds recurring schedules, collaboration records, file storage, responses, comments, notification devices and a durable push outbox. Apply migrations before using the updated app. Production deployment is deliberately deferred at the user's request.
+The Flutter project is in `D:/Projects/clockmanagement-mobile`. API migration `019_mobile_management.sql` adds recurring schedules, collaboration records, file storage, responses, comments, notification devices and a durable push outbox. Migration `020_unified_weekly_schedules.sql` unifies web/mobile schedules and enables automatic weekly continuation. Apply migrations before using the updated app. Production deployment is deliberately deferred at the user's request.
 
 ## Workflows
 
-- **Manage → Recurring schedules**, also available from Schedule: select an employee/location, weekdays, local start/end times, unpaid break and grace period. Generate drafts for a selected range (maximum one year), then publish them in Schedule. Overnight shifts use the company time zone. Repeating generation skips identical shifts; any other overlap rolls back the entire operation. Deleting a template preserves existing shifts.
+- **Schedule ? Weekly schedules**: choose everyone, a department/location or one employee, working days and hours, then Save & activate. Schedules publish and continue automatically. Calendar handles individual changes. See [Weekly schedules](WEEKLY_SCHEDULES.md) for priority, exceptions, migration and refresh behavior. Schedule and Tasks are now direct bottom navigation tabs; additional tools live in More, and notifications open from the bell.
+
 - **Team → employee → Employee overview**: salary basis, completed work hours, planned hours, overtime, lateness, absences and estimated salary for today/week/month, today's punches, upcoming shifts and assigned tasks. Open reports for arbitrary periods.
 - **Overview**: current attendance and total employees, active/completed tasks, monthly worked hours and salary estimate. Estimates use the full month's published schedule and are distinct from approved payroll, taxes and premiums.
 - **Reports → Excel / PDF**: generate actual `.xlsx` / `.pdf` files and use the device's save/share sheet. Exports cover the selected period and employee scope, including scheduled/actual days, hours, lateness, absence, overtime, completed tasks and estimated pay. Numeric spreadsheet cells remain numeric; employee names are text even when they start with `=`. PDF fonts are bundled for offline Cyrillic rendering.

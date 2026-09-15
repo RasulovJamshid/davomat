@@ -35,6 +35,8 @@ import {
 } from "./workforceApi";
 import { tashkentDate } from "./operationsApi";
 import { intlLocale, useI18n } from "./i18n";
+import { WeeklySchedules } from "./WeeklySchedules";
+import { scheduleText } from "./scheduleCopy";
 
 type ShiftTone = "sage" | "blue" | "amber" | "plum" | "slate";
 interface ShiftTemplate {
@@ -515,6 +517,9 @@ export function SchedulePage({
   const [weekStart, setWeekStart] = useState(() =>
     mondayOfWeek(tashkentDate()),
   );
+  const [scheduleView, setScheduleView] = useState<"calendar" | "weekly">(
+    "calendar",
+  );
   const [employees, setEmployees] = useState<ApiEmployeeOption[]>([]);
   const [locations, setLocations] = useState<ApiLocation[]>([]);
   const [shifts, setShifts] = useState<ApiShift[]>([]);
@@ -698,326 +703,381 @@ export function SchedulePage({
         <div>
           <p className="eyebrow">{t("workspace")}</p>
           <h1>{t("schedule")}</h1>
-          <p>{t("scheduleDescription")}</p>
+          <p>{scheduleText(locale, "calendarHelp")}</p>
         </div>
-        <div className="schedule-heading-actions">
-          <button
-            className="secondary-button"
-            onClick={copyPrevious}
-            disabled={loading || action !== null}
-          >
-            <Copy size={16} />
-            {t(action === "copy" ? "copyingSchedule" : "copyPreviousWeek")}
-          </button>
-          <button
-            className="primary-button"
-            onClick={publish}
-            disabled={loading || !hasDraft || action !== null}
-          >
-            <Send size={16} />
-            {t(
-              action === "publish"
-                ? "publishingSchedule"
-                : hasDraft || !shifts.length
-                  ? "publishSchedule"
-                  : "published",
-            )}
-          </button>
-        </div>
-      </div>
-      {!loading && (
-        <div className="workflow-hint" role="status">
-          <CalendarDays size={18} aria-hidden="true" />
-          <span>
-            {t(
-              hasDraft
-                ? "scheduleDraftHint"
-                : shifts.length
-                  ? "schedulePublishedHint"
-                  : "scheduleStartHint",
-              { count: draftCount },
-            )}
-          </span>
-        </div>
-      )}
-      {error && (
-        <div className="operations-error">
-          <X size={17} />
-          <span>{error}</span>
-          <button onClick={load}>{t("tryAgain")}</button>
-        </div>
-      )}
-      <div className="schedule-insights">
-        <span>
-          <UsersRound size={16} />
-          {t("employeesCount", { count: employees.length })}
-        </span>
-        <span>
-          <CalendarDays size={16} />
-          {t("assignedShifts", { count: shifts.length })}
-        </span>
-        <span className="coverage-good">
-          <Check size={16} />
-          {t("coveragePercent", { count: coverage })}
-        </span>
-        <span className="coverage-warning">
-          <Sparkles size={16} />
-          {t("withoutShifts", { count: gaps.length })}
-        </span>
-      </div>
-      <div className="schedule-toolbar panel">
-        <div className="week-navigator">
-          <button
-            aria-label={t("previousWeek")}
-            disabled={action !== null}
-            onClick={() => setWeekStart(addDateDays(weekStart, -7))}
-          >
-            <ChevronLeft size={17} />
-          </button>
-          <div>
-            <strong>{rangeLabel}</strong>
-            <span>{t("sevenDaySchedule")}</span>
+        {scheduleView === "calendar" && (
+          <div className="schedule-heading-actions">
+            <button
+              className="secondary-button"
+              onClick={copyPrevious}
+              disabled={loading || action !== null}
+            >
+              <Copy size={16} />
+              {t(action === "copy" ? "copyingSchedule" : "copyPreviousWeek")}
+            </button>
+            <button
+              className="primary-button"
+              onClick={publish}
+              disabled={loading || !hasDraft || action !== null}
+            >
+              <Send size={16} />
+              {t(
+                action === "publish"
+                  ? "publishingSchedule"
+                  : hasDraft || !shifts.length
+                    ? "publishSchedule"
+                    : "published",
+              )}
+            </button>
           </div>
-          <button
-            aria-label={t("nextWeek")}
-            disabled={action !== null}
-            onClick={() => setWeekStart(addDateDays(weekStart, 7))}
-          >
-            <ChevronRight size={17} />
-          </button>
-        </div>
+        )}
+      </div>
+      <div
+        className="schedule-view-tabs"
+        role="tablist"
+        aria-label={t("schedule")}
+      >
         <button
-          className="secondary-button"
-          disabled={weekStart === currentWeek || action !== null}
-          onClick={() => setWeekStart(currentWeek)}
+          role="tab"
+          aria-selected={scheduleView === "calendar"}
+          onClick={() => setScheduleView("calendar")}
         >
-          {t("thisWeek")}
+          <CalendarDays size={18} />
+          {scheduleText(locale, "calendar")}
         </button>
-        <label className="workspace-search">
-          <Search size={17} />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={t("findEmployee")}
-          />
-        </label>
-        <label className="filter-menu">
-          <MapPin size={16} />
-          <select
-            value={locationFilter}
-            onChange={(event) => setLocationFilter(event.target.value)}
-          >
-            <option value="ALL">{t("allLocations")}</option>
-            {locations.map((location) => (
-              <option value={location.id} key={location.id}>
-                {location.name}
-              </option>
-            ))}
-          </select>
-          <ChevronDown size={15} />
-        </label>
-        <label className="filter-menu">
-          <Filter size={16} />
-          <select
-            value={roleFilter}
-            onChange={(event) => setRoleFilter(event.target.value)}
-          >
-            <option value="ALL">{t("allRoles")}</option>
-            {roles.map((role) => (
-              <option key={role}>{role}</option>
-            ))}
-          </select>
-          <ChevronDown size={15} />
-        </label>
+        <button
+          role="tab"
+          aria-selected={scheduleView === "weekly"}
+          onClick={() => setScheduleView("weekly")}
+        >
+          <Sparkles size={18} />
+          {scheduleText(locale, "weekly")}
+        </button>
       </div>
-      {hasFilters && (
-        <div className="filter-summary">
-          <span role="status">
-            {t("showingTeamMembers", {
-              shown: filteredEmployees.length,
-              total: employees.length,
-            })}
-          </span>
-          <button className="text-button" onClick={clearFilters}>
-            {t("clearFilters")}
-          </button>
-        </div>
-      )}
-      <div className="schedule-layout">
-        <section className="panel schedule-grid-panel">
-          <div className="schedule-scroll">
-            <div className="schedule-grid schedule-grid-head">
-              <div className="person-heading">{t("teamMember")}</div>
-              {days.map((day) => (
-                <div className={day.today ? "today" : ""} key={day.key}>
-                  <span>{day.name}</span>
-                  <strong>{day.date}</strong>
-                </div>
-              ))}
-            </div>
-            {loading ? (
-              <div className="schedule-loading">
-                {t("loadingWeeklySchedule")}
-              </div>
-            ) : filteredEmployees.length === 0 ? (
-              <div className="workflow-empty">
-                <Search size={24} aria-hidden="true" />
-                <strong>
-                  {t(hasFilters ? "noMatchingEmployees" : "noTeamToSchedule")}
-                </strong>
-                <p>
-                  {t(
-                    hasFilters
-                      ? "adjustFiltersHint"
-                      : "addPeopleBeforeSchedule",
-                  )}
-                </p>
-              </div>
-            ) : (
-              filteredEmployees.map((employee) => (
-                <div className="schedule-grid schedule-row" key={employee.id}>
-                  <div className="schedule-person">
-                    <span className={`avatar ${employee.tone}`}>
-                      {employee.initials}
-                    </span>
-                    <div>
-                      <strong>{employee.name}</strong>
-                      <span>{employee.role}</span>
-                    </div>
-                  </div>
-                  {days.map((day) => {
-                    const assigned =
-                      byCell[`${employee.id}-${day.dateKey}`] ?? [];
-                    return (
-                      <div
-                        className={`schedule-cell ${day.today ? "today" : ""}`}
-                        key={day.key}
-                      >
-                        {assigned.length === 0 ? (
-                          <button
-                            className="add-shift"
-                            disabled={action !== null}
-                            aria-label={`${t("addShift")} · ${employee.name} · ${day.dateKey}`}
-                            onClick={() => setSelection({ employee, day })}
-                          >
-                            <Plus size={15} />
-                            {t("addShift")}
-                          </button>
-                        ) : (
-                          <>
-                            {assigned.map((item) => (
-                              <button
-                                title={t("editShiftAction")}
-                                disabled={action !== null}
-                                className={`shift-block ${item.status === "DRAFT" ? "amber" : "sage"}`}
-                                key={item.id}
-                                onClick={() => setSelectedShift(item)}
-                              >
-                                <strong>
-                                  {formatTime(item.startsAt)}–
-                                  {formatTime(item.endsAt)}
-                                </strong>
-                                <small>
-                                  {item.location} ·{" "}
-                                  {item.status === "DRAFT"
-                                    ? t("draft")
-                                    : t("published")}
-                                </small>
-                              </button>
-                            ))}
-                            <button
-                              className="add-shift compact"
-                              disabled={action !== null}
-                              onClick={() => setSelection({ employee, day })}
-                            >
-                              <Plus size={13} />
-                              {t("split")}
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))
-            )}
-          </div>
-          <div className="schedule-grid-footer">
-            <span>
-              {t("showingTeamMembers", {
-                shown: filteredEmployees.length,
-                total: employees.length,
-              })}
-            </span>
-            <span>{t("shiftEditHint")}</span>
-          </div>
-        </section>
-        <aside className="open-shifts-panel panel">
-          <div className="panel-header">
+      {scheduleView === "weekly" ? (
+        <WeeklySchedules
+          onChanged={() => {
+            void load();
+          }}
+        />
+      ) : (
+        <>
+          <div className="schedule-setup-banner">
             <div>
-              <h2>{t("coverageGaps")}</h2>
-              <p>{t("employeesWithoutShift")}</p>
+              <strong>{scheduleText(locale, "title")}</strong>
+              <p>{scheduleText(locale, "forever")}</p>
             </div>
-            <span className="count-pill">{gaps.length}</span>
+            <button
+              className="primary-button"
+              onClick={() => setScheduleView("weekly")}
+            >
+              {scheduleText(locale, "add")}
+              <ChevronRight size={17} />
+            </button>
           </div>
-          <div className="open-shift-list">
-            {gaps.length ? (
-              gaps.slice(0, 6).map((employee) => (
-                <article key={employee.id}>
-                  <div className="open-shift-top">
-                    <span>{t("needsCoverage")}</span>
-                    <small>{employee.role}</small>
-                  </div>
-                  <h3>{employee.name}</h3>
-                  <p>
-                    <CalendarDays size={14} />
-                    {t("noAssignedShifts")}
-                  </p>
-                </article>
-              ))
-            ) : (
-              <div className="all-clear compact">
-                <span>
-                  <Check size={20} />
-                </span>
-                <strong>{t("everyoneCovered")}</strong>
+          {!loading && (
+            <div className="workflow-hint" role="status">
+              <CalendarDays size={18} aria-hidden="true" />
+              <span>
+                {t(
+                  hasDraft
+                    ? "scheduleDraftHint"
+                    : shifts.length
+                      ? "schedulePublishedHint"
+                      : "scheduleStartHint",
+                  { count: draftCount },
+                )}
+              </span>
+            </div>
+          )}
+          {error && (
+            <div className="operations-error">
+              <X size={17} />
+              <span>{error}</span>
+              <button onClick={load}>{t("tryAgain")}</button>
+            </div>
+          )}
+          <div className="schedule-insights">
+            <span>
+              <UsersRound size={16} />
+              {t("employeesCount", { count: employees.length })}
+            </span>
+            <span>
+              <CalendarDays size={16} />
+              {t("assignedShifts", { count: shifts.length })}
+            </span>
+            <span className="coverage-good">
+              <Check size={16} />
+              {t("coveragePercent", { count: coverage })}
+            </span>
+            <span className="coverage-warning">
+              <Sparkles size={16} />
+              {t("withoutShifts", { count: gaps.length })}
+            </span>
+          </div>
+          <div className="schedule-toolbar panel">
+            <div className="week-navigator">
+              <button
+                aria-label={t("previousWeek")}
+                disabled={action !== null}
+                onClick={() => setWeekStart(addDateDays(weekStart, -7))}
+              >
+                <ChevronLeft size={17} />
+              </button>
+              <div>
+                <strong>{rangeLabel}</strong>
+                <span>{t("sevenDaySchedule")}</span>
               </div>
-            )}
+              <button
+                aria-label={t("nextWeek")}
+                disabled={action !== null}
+                onClick={() => setWeekStart(addDateDays(weekStart, 7))}
+              >
+                <ChevronRight size={17} />
+              </button>
+            </div>
+            <button
+              className="secondary-button"
+              disabled={weekStart === currentWeek || action !== null}
+              onClick={() => setWeekStart(currentWeek)}
+            >
+              {t("thisWeek")}
+            </button>
+            <label className="workspace-search">
+              <Search size={17} />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={t("findEmployee")}
+              />
+            </label>
+            <label className="filter-menu">
+              <MapPin size={16} />
+              <select
+                value={locationFilter}
+                onChange={(event) => setLocationFilter(event.target.value)}
+              >
+                <option value="ALL">{t("allLocations")}</option>
+                {locations.map((location) => (
+                  <option value={location.id} key={location.id}>
+                    {location.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={15} />
+            </label>
+            <label className="filter-menu">
+              <Filter size={16} />
+              <select
+                value={roleFilter}
+                onChange={(event) => setRoleFilter(event.target.value)}
+              >
+                <option value="ALL">{t("allRoles")}</option>
+                {roles.map((role) => (
+                  <option key={role}>{role}</option>
+                ))}
+              </select>
+              <ChevronDown size={15} />
+            </label>
           </div>
-        </aside>
-      </div>
-      {selection && (
-        <ShiftAssignment
-          employee={selection.employee}
-          day={selection.day}
-          existing={
-            byCell[`${selection.employee.id}-${selection.day.dateKey}`] ?? []
-          }
-          locations={locations}
-          onClose={() => setSelection(null)}
-          onCreated={() => {
-            setSelection(null);
-            notify(t("shiftAssignedDraft"));
-            load();
-          }}
-        />
+          {hasFilters && (
+            <div className="filter-summary">
+              <span role="status">
+                {t("showingTeamMembers", {
+                  shown: filteredEmployees.length,
+                  total: employees.length,
+                })}
+              </span>
+              <button className="text-button" onClick={clearFilters}>
+                {t("clearFilters")}
+              </button>
+            </div>
+          )}
+          <div className="schedule-layout">
+            <section className="panel schedule-grid-panel">
+              <div className="schedule-scroll">
+                <div className="schedule-grid schedule-grid-head">
+                  <div className="person-heading">{t("teamMember")}</div>
+                  {days.map((day) => (
+                    <div className={day.today ? "today" : ""} key={day.key}>
+                      <span>{day.name}</span>
+                      <strong>{day.date}</strong>
+                    </div>
+                  ))}
+                </div>
+                {loading ? (
+                  <div className="schedule-loading">
+                    {t("loadingWeeklySchedule")}
+                  </div>
+                ) : filteredEmployees.length === 0 ? (
+                  <div className="workflow-empty">
+                    <Search size={24} aria-hidden="true" />
+                    <strong>
+                      {t(
+                        hasFilters ? "noMatchingEmployees" : "noTeamToSchedule",
+                      )}
+                    </strong>
+                    <p>
+                      {t(
+                        hasFilters
+                          ? "adjustFiltersHint"
+                          : "addPeopleBeforeSchedule",
+                      )}
+                    </p>
+                  </div>
+                ) : (
+                  filteredEmployees.map((employee) => (
+                    <div
+                      className="schedule-grid schedule-row"
+                      key={employee.id}
+                    >
+                      <div className="schedule-person">
+                        <span className={`avatar ${employee.tone}`}>
+                          {employee.initials}
+                        </span>
+                        <div>
+                          <strong>{employee.name}</strong>
+                          <span>{employee.role}</span>
+                        </div>
+                      </div>
+                      {days.map((day) => {
+                        const assigned =
+                          byCell[`${employee.id}-${day.dateKey}`] ?? [];
+                        return (
+                          <div
+                            className={`schedule-cell ${day.today ? "today" : ""}`}
+                            key={day.key}
+                          >
+                            {assigned.length === 0 ? (
+                              <button
+                                className="add-shift"
+                                disabled={action !== null}
+                                aria-label={`${t("addShift")} · ${employee.name} · ${day.dateKey}`}
+                                onClick={() => setSelection({ employee, day })}
+                              >
+                                <Plus size={15} />
+                                {t("addShift")}
+                              </button>
+                            ) : (
+                              <>
+                                {assigned.map((item) => (
+                                  <button
+                                    title={t("editShiftAction")}
+                                    disabled={action !== null}
+                                    className={`shift-block ${item.status === "DRAFT" ? "amber" : "sage"}`}
+                                    key={item.id}
+                                    onClick={() => setSelectedShift(item)}
+                                  >
+                                    <strong>
+                                      {formatTime(item.startsAt)}–
+                                      {formatTime(item.endsAt)}
+                                    </strong>
+                                    <small>
+                                      {item.location} ·{" "}
+                                      {item.status === "DRAFT"
+                                        ? t("draft")
+                                        : t("published")}
+                                    </small>
+                                  </button>
+                                ))}
+                                <button
+                                  className="add-shift compact"
+                                  disabled={action !== null}
+                                  onClick={() =>
+                                    setSelection({ employee, day })
+                                  }
+                                >
+                                  <Plus size={13} />
+                                  {t("split")}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="schedule-grid-footer">
+                <span>
+                  {t("showingTeamMembers", {
+                    shown: filteredEmployees.length,
+                    total: employees.length,
+                  })}
+                </span>
+                <span>{t("shiftEditHint")}</span>
+              </div>
+            </section>
+            <aside className="open-shifts-panel panel">
+              <div className="panel-header">
+                <div>
+                  <h2>{t("coverageGaps")}</h2>
+                  <p>{t("employeesWithoutShift")}</p>
+                </div>
+                <span className="count-pill">{gaps.length}</span>
+              </div>
+              <div className="open-shift-list">
+                {gaps.length ? (
+                  gaps.slice(0, 6).map((employee) => (
+                    <article key={employee.id}>
+                      <div className="open-shift-top">
+                        <span>{t("needsCoverage")}</span>
+                        <small>{employee.role}</small>
+                      </div>
+                      <h3>{employee.name}</h3>
+                      <p>
+                        <CalendarDays size={14} />
+                        {t("noAssignedShifts")}
+                      </p>
+                    </article>
+                  ))
+                ) : (
+                  <div className="all-clear compact">
+                    <span>
+                      <Check size={20} />
+                    </span>
+                    <strong>{t("everyoneCovered")}</strong>
+                  </div>
+                )}
+              </div>
+            </aside>
+          </div>
+          {selection && (
+            <ShiftAssignment
+              employee={selection.employee}
+              day={selection.day}
+              existing={
+                byCell[`${selection.employee.id}-${selection.day.dateKey}`] ??
+                []
+              }
+              locations={locations}
+              onClose={() => setSelection(null)}
+              onCreated={() => {
+                setSelection(null);
+                notify(t("shiftAssignedDraft"));
+                load();
+              }}
+            />
+          )}
+          {selectedShift && (
+            <ShiftEditor
+              shift={selectedShift}
+              locations={locations}
+              onClose={() => setSelectedShift(null)}
+              onSaved={(message) => {
+                setSelectedShift(null);
+                notify(message);
+                load();
+              }}
+            />
+          )}
+          <div className={`toast ${toast ? "visible" : ""}`} role="status">
+            <Check size={17} />
+            {toast}
+          </div>
+        </>
       )}
-      {selectedShift && (
-        <ShiftEditor
-          shift={selectedShift}
-          locations={locations}
-          onClose={() => setSelectedShift(null)}
-          onSaved={(message) => {
-            setSelectedShift(null);
-            notify(message);
-            load();
-          }}
-        />
-      )}
-      <div className={`toast ${toast ? "visible" : ""}`} role="status">
-        <Check size={17} />
-        {toast}
-      </div>
     </div>
   );
 }

@@ -52,12 +52,14 @@ secured Node API and PostgreSQL database.
 - Nginx SPA hosting and same-origin API proxy in production
 - Unit tests, dependency update automation, and a GitHub Actions verification workflow
 - Vendor-neutral biometric, face-terminal, kiosk, and turnstile event ingestion with hashed device keys, liveness enforcement, identity mapping, and idempotency
-- Availability, employee shift swaps with acceptance and manager approval, company-wide workweek defaults by department/location, and recurring schedule materialization
+- Availability, employee shift swaps with acceptance and manager approval, and shared web/mobile weekly schedules for everyone, departments, locations or individual employees with automatic publication and continuation
 - Advanced payroll rules for overtime, night and holiday premiums, dated rates, benefits, pension deductions, employer contributions, and calculation breakdowns
 - Scheduled CSV/JSON reports plus server-generated attendance, payroll, accounting, and audit exports
 - Locale-aware API errors in English, Uzbek, and Russian
 
 Terminal setup and webhook contract: [docs/DEVICE_INTEGRATION.md](docs/DEVICE_INTEGRATION.md).
+
+Weekly setup and automatic continuation: [docs/WEEKLY_SCHEDULES.md](docs/WEEKLY_SCHEDULES.md).
 
 ## Fastest development setup
 

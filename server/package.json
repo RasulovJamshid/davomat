@@ -10,6 +10,7 @@
     "bootstrap:prod": "node dist/cli/bootstrap.js",
     "seed:prod": "node dist/cli/seed.js",
     "test": "vitest run src",
+    "test:weekly": "node scripts/test-weekly-schedules.mjs",
     "test:workforce": "node scripts/test-workforce.mjs",
     "migrate": "tsx src/cli/migrate.ts",
     "seed": "tsx src/cli/seed.ts"

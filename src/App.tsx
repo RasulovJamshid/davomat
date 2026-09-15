@@ -45,6 +45,7 @@ import { SettingsPage } from "./SettingsPage";
 import { EmployeePortal } from "./EmployeePortal";
 import { LeavePage } from "./LeavePage";
 import { AdvancedPage } from "./AdvancedPage";
+import { scheduleText } from "./scheduleCopy";
 import { NotificationCenter } from "./Notifications";
 import {
   fetchOperationsSnapshot,
@@ -177,8 +178,18 @@ const navGroups: Array<{
   label: "dailyWork" | "management";
   items: Array<{ label: Page; icon: typeof Gauge }>;
 }> = [
-  { label: "dailyWork", items: navItems.slice(0, 5) },
-  { label: "management", items: navItems.slice(5) },
+  {
+    label: "dailyWork",
+    items: ["Overview", "People", "Schedule", "Attendance", "Tasks"].map(
+      (label) => navItems.find((item) => item.label === label)!,
+    ),
+  },
+  {
+    label: "management",
+    items: ["Leave", "Payroll", "Reports", "LiveLocations", "Advanced"].map(
+      (label) => navItems.find((item) => item.label === label)!,
+    ),
+  },
 ];
 
 const pageSlugs: Record<Page, string> = {
@@ -270,7 +281,8 @@ function Sidebar({
   user: SessionUser;
   onLogout: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const [sectionSearch, setSectionSearch] = useState("");
   return (
     <aside className={`sidebar ${open ? "open" : ""}`}>
       <div className="brand">
@@ -282,27 +294,42 @@ function Sidebar({
         </span>
       </div>
 
+      <label className="section-search">
+        <Search size={16} />
+        <input
+          value={sectionSearch}
+          onChange={(e) => setSectionSearch(e.target.value)}
+          placeholder={scheduleText(locale, "find")}
+          aria-label={scheduleText(locale, "find")}
+        />
+      </label>
       <nav className="nav-group" aria-label={t("mainNavigation")}>
         {navGroups.map((group) => (
           <div className="nav-section" key={group.label}>
             <p className="nav-title">{t(group.label)}</p>
-            {group.items.map(({ label, icon: Icon }) => (
-              <button
-                className={`nav-item ${page === label ? "active" : ""}`}
-                key={label}
-                aria-current={page === label ? "page" : undefined}
-                onClick={() => {
-                  onPageChange(label);
-                  onClose();
-                }}
-              >
-                <Icon size={18} />
-                <span>{t(label.toLowerCase())}</span>
-                {label === "Attendance" && exceptionCount > 0 && (
-                  <span className="nav-count">{exceptionCount}</span>
-                )}
-              </button>
-            ))}
+            {group.items
+              .filter((item) =>
+                t(item.label.toLowerCase())
+                  .toLowerCase()
+                  .includes(sectionSearch.toLowerCase()),
+              )
+              .map(({ label, icon: Icon }) => (
+                <button
+                  className={`nav-item ${page === label ? "active" : ""}`}
+                  key={label}
+                  aria-current={page === label ? "page" : undefined}
+                  onClick={() => {
+                    onPageChange(label);
+                    onClose();
+                  }}
+                >
+                  <Icon size={18} />
+                  <span>{t(label.toLowerCase())}</span>
+                  {label === "Attendance" && exceptionCount > 0 && (
+                    <span className="nav-count">{exceptionCount}</span>
+                  )}
+                </button>
+              ))}
           </div>
         ))}
       </nav>

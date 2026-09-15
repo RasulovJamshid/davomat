@@ -12,6 +12,7 @@ import { pool } from "./db.js";
 import { asyncHandler, HttpError } from "./http.js";
 import { employeeRouter } from "./employeeRoutes.js";
 import { taskRouter } from "./taskRoutes.js";
+import { weeklyRouter } from "./weeklySchedules.js";
 import { mobileManagementRouter } from "./mobileManagementRoutes.js";
 import { pushRouter } from "./push.js";
 import { webPunchRouter } from "./webPunchRoutes.js";
@@ -254,6 +255,7 @@ apiRouter.post(
 );
 
 apiRouter.use(requireAuth);
+apiRouter.use(weeklyRouter);
 apiRouter.use(taskRouter);
 apiRouter.use(mobileManagementRouter);
 apiRouter.use(pushRouter);
