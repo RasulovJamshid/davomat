@@ -62,9 +62,7 @@ test("weekly setup is discoverable, automatic and editable", async ({
   });
   await page.goto("/#schedule");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Set weekly schedule", exact: true })
-    .click();
+  // Weekly schedules are the default view of the Schedule workspace.
   await expect(
     page.getByRole("tab", { name: "Weekly schedules" }),
   ).toHaveAttribute("aria-selected", "true");

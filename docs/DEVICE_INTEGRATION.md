@@ -2,7 +2,7 @@
 
 Atlas uses a vendor-neutral inbound adapter. Face and fingerprint templates stay on the terminal; Atlas stores only the vendor user identifier and its employee mapping.
 
-1. In **Advanced → Devices**, register the terminal and copy the one-time API key.
+1. In **Settings → Clock devices**, register the terminal and copy the one-time API key.
 2. Link each employee to the user ID configured on that terminal.
 3. Configure the terminal or its local bridge to send `POST /api/device/events` with `X-Device-Serial` and `X-Device-Key` headers.
 

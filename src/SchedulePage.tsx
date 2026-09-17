@@ -37,6 +37,7 @@ import { tashkentDate } from "./operationsApi";
 import { intlLocale, useI18n } from "./i18n";
 import { WeeklySchedules } from "./WeeklySchedules";
 import { scheduleText } from "./scheduleCopy";
+import { PageGuide } from "./Guidance";
 
 type ShiftTone = "sage" | "blue" | "amber" | "plum" | "slate";
 interface ShiftTemplate {
@@ -517,9 +518,14 @@ export function SchedulePage({
   const [weekStart, setWeekStart] = useState(() =>
     mondayOfWeek(tashkentDate()),
   );
+  // Recurring weekly schedules are the normal way to plan work; the calendar
+  // is for one-off changes, so it opens only when a specific employee was requested.
   const [scheduleView, setScheduleView] = useState<"calendar" | "weekly">(
-    "calendar",
+    initialEmployeeId ? "calendar" : "weekly",
   );
+  useEffect(() => {
+    if (initialEmployeeId) setScheduleView("calendar");
+  }, [initialEmployeeId]);
   const [employees, setEmployees] = useState<ApiEmployeeOption[]>([]);
   const [locations, setLocations] = useState<ApiLocation[]>([]);
   const [shifts, setShifts] = useState<ApiShift[]>([]);
@@ -732,6 +738,10 @@ export function SchedulePage({
           </div>
         )}
       </div>
+      <PageGuide
+        id="schedule"
+        steps={[t("guideSchedule1"), t("guideSchedule2"), t("guideSchedule3")]}
+      />
       <div
         className="schedule-view-tabs"
         role="tablist"
@@ -739,19 +749,19 @@ export function SchedulePage({
       >
         <button
           role="tab"
-          aria-selected={scheduleView === "calendar"}
-          onClick={() => setScheduleView("calendar")}
-        >
-          <CalendarDays size={18} />
-          {scheduleText(locale, "calendar")}
-        </button>
-        <button
-          role="tab"
           aria-selected={scheduleView === "weekly"}
           onClick={() => setScheduleView("weekly")}
         >
           <Sparkles size={18} />
           {scheduleText(locale, "weekly")}
+        </button>
+        <button
+          role="tab"
+          aria-selected={scheduleView === "calendar"}
+          onClick={() => setScheduleView("calendar")}
+        >
+          <CalendarDays size={18} />
+          {t("calendarView")}
         </button>
       </div>
       {scheduleView === "weekly" ? (
@@ -762,19 +772,6 @@ export function SchedulePage({
         />
       ) : (
         <>
-          <div className="schedule-setup-banner">
-            <div>
-              <strong>{scheduleText(locale, "title")}</strong>
-              <p>{scheduleText(locale, "forever")}</p>
-            </div>
-            <button
-              className="primary-button"
-              onClick={() => setScheduleView("weekly")}
-            >
-              {scheduleText(locale, "add")}
-              <ChevronRight size={17} />
-            </button>
-          </div>
           {!loading && (
             <div className="workflow-hint" role="status">
               <CalendarDays size={18} aria-hidden="true" />

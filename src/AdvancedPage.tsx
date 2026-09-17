@@ -5,16 +5,13 @@ import {
   Cpu,
   Download,
   FileBarChart,
-  KeyRound,
   Plus,
-  RefreshCw,
   ShieldCheck,
   X,
 } from "lucide-react";
 import { apiRequest, downloadApiFile } from "./api";
 import { fetchSchedule } from "./workforceApi";
 import { tashkentDate } from "./operationsApi";
-import { scheduleText } from "./scheduleCopy";
 import { useI18n } from "./i18n";
 
 type Device = {
@@ -60,11 +57,47 @@ type Swap = {
   endsAt: string;
 };
 const today = () => new Date().toISOString().slice(0, 10);
-export function AdvancedPage() {
-  const { t, locale } = useI18n();
-  const [tab, setTab] = useState<
-    "devices" | "payroll" | "scheduling" | "reports"
-  >("reports");
+
+export type AdvancedSection = "devices" | "payroll" | "swaps" | "reports";
+
+type Frequency = "manual" | "daily" | "weekly" | "monthly";
+const cronFor = (frequency: Frequency, time: string) => {
+  const [hour = "8", minute = "0"] = time.split(":");
+  const h = Number(hour);
+  const m = Number(minute);
+  if (frequency === "daily") return `${m} ${h} * * *`;
+  if (frequency === "weekly") return `${m} ${h} * * 1`;
+  if (frequency === "monthly") return `${m} ${h} 1 * *`;
+  return "";
+};
+/** Turns the stored cron back into a plain-language label. */
+const describeCron = (
+  cron: string | null,
+  t: (key: string, values?: Record<string, string | number>) => string,
+) => {
+  if (!cron) return t("frequencyManual");
+  const match = /^(\d+) (\d+) (\*|1) \* (\*|1)$/.exec(cron.trim());
+  if (!match) return cron;
+  const [, minute, hour, dayOfMonth, dayOfWeek] = match;
+  const time = `${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`;
+  const label =
+    dayOfMonth === "1"
+      ? t("frequencyMonthly")
+      : dayOfWeek === "1"
+        ? t("frequencyWeekly")
+        : t("frequencyDaily");
+  return `${label} · ${time}`;
+};
+
+/**
+ * Administrative tools, embedded inside the workspace they belong to:
+ * devices in Settings, pay rules in Payroll, swaps in Requests, reports in Reports.
+ */
+export function AdvancedPage({ section }: { section: AdvancedSection }) {
+  const { t } = useI18n();
+  const tab = section;
+  const [frequency, setFrequency] = useState<Frequency>("monthly");
+  const [sendTime, setSendTime] = useState("08:00");
   const [devices, setDevices] = useState<Device[]>([]);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
@@ -130,16 +163,30 @@ export function AdvancedPage() {
   const load = async () => {
     setError("");
     try {
-      const schedule = await fetchSchedule(tashkentDate(), tashkentDate());
+      // Only load what this section shows.
+      const needsPeople = section === "devices" || section === "payroll";
+      const schedule = needsPeople
+        ? await fetchSchedule(tashkentDate(), tashkentDate())
+        : { employees: [], meta: { locations: [] } };
       const [d, r, h, rep, s] = await Promise.all([
-        apiRequest<Device[]>("/devices"),
-        apiRequest<Rule>("/payroll-rules"),
-        apiRequest<Holiday[]>("/holidays"),
-        apiRequest<Report[]>("/reports"),
-        apiRequest<Swap[]>("/shift-swaps"),
+        section === "devices"
+          ? apiRequest<Device[]>("/devices")
+          : Promise.resolve<Device[]>([]),
+        section === "payroll"
+          ? apiRequest<Rule>("/payroll-rules")
+          : Promise.resolve<Rule | null>(null),
+        section === "payroll"
+          ? apiRequest<Holiday[]>("/holidays")
+          : Promise.resolve<Holiday[]>([]),
+        section === "reports"
+          ? apiRequest<Report[]>("/reports")
+          : Promise.resolve<Report[]>([]),
+        section === "swaps"
+          ? apiRequest<Swap[]>("/shift-swaps")
+          : Promise.resolve<Swap[]>([]),
       ]);
       setDevices(d);
-      setRule(r);
+      if (r) setRule(r);
       setHolidays(h);
       setReports(rep);
       setSwaps(s);
@@ -232,7 +279,7 @@ export function AdvancedPage() {
           method: "POST",
           body: JSON.stringify({
             ...report,
-            scheduleCron: report.scheduleCron || null,
+            scheduleCron: cronFor(frequency, sendTime) || null,
             recipients: report.recipients
               .split(",")
               .map((x) => x.trim())
@@ -284,41 +331,7 @@ export function AdvancedPage() {
     );
   };
   return (
-    <div className="advanced-page">
-      <div className="page-heading-row">
-        <div>
-          <p className="eyebrow">{t("administration")}</p>
-          <h1>{t("advancedOperations")}</h1>
-          <p>{t("advancedOperationsDescription")}</p>
-        </div>
-        <button className="secondary-button" onClick={() => void load()}>
-          <RefreshCw size={16} />
-          {t("refresh")}
-        </button>
-      </div>
-      <nav className="advanced-tabs" aria-label={t("advancedSections")}>
-        {(["devices", "payroll", "scheduling", "reports"] as const).map(
-          (name) => (
-            <button
-              key={name}
-              className={tab === name ? "active" : ""}
-              aria-current={tab === name ? "page" : undefined}
-              onClick={() => setTab(name)}
-            >
-              {name === "devices" ? (
-                <Cpu size={17} />
-              ) : name === "payroll" ? (
-                <KeyRound size={17} />
-              ) : name === "scheduling" ? (
-                <CalendarClock size={17} />
-              ) : (
-                <FileBarChart size={17} />
-              )}{" "}
-              {t(`advanced_${name}`)}
-            </button>
-          ),
-        )}
-      </nav>
+    <div className={`advanced-page advanced-${section}`}>
       {error && (
         <div className="operations-error">
           <X size={17} />
@@ -743,16 +756,8 @@ export function AdvancedPage() {
           </section>
         </div>
       )}
-      {tab === "scheduling" && (
-        <div className="advanced-grid">
-          <section className="panel weekly-relocation">
-            <CalendarClock size={30} />
-            <h2>{scheduleText(locale, "moved")}</h2>
-            <p>{scheduleText(locale, "help")}</p>
-            <a className="primary-button" href="#schedule">
-              {scheduleText(locale, "open")}
-            </a>
-          </section>
+      {tab === "swaps" && (
+        <div className="advanced-grid single">
           <div>
             <section className="panel advanced-list">
               <h2>{t("shiftSwapApprovals")}</h2>
@@ -833,7 +838,9 @@ export function AdvancedPage() {
                 }
               >
                 {["ATTENDANCE", "PAYROLL", "ACCOUNTING", "AUDIT"].map((x) => (
-                  <option key={x}>{x}</option>
+                  <option key={x} value={x}>
+                    {t(`reportType${x}`)}
+                  </option>
                 ))}
               </select>
             </label>
@@ -847,27 +854,44 @@ export function AdvancedPage() {
                   setReport({ ...report, recipients: e.target.value })
                 }
               />
+              <small className="field-hint">{t("recipientsHelp")}</small>
             </label>
             <label className="form-field">
-              <span>{t("cronSchedule")}</span>
-              <input
-                placeholder="0 8 1 * *"
-                value={report.scheduleCron}
-                onChange={(e) =>
-                  setReport({ ...report, scheduleCron: e.target.value })
-                }
-              />
+              <span>{t("reportFrequency")}</span>
+              <select
+                value={frequency}
+                onChange={(e) => setFrequency(e.target.value as Frequency)}
+              >
+                <option value="manual">{t("frequencyManual")}</option>
+                <option value="daily">{t("frequencyDaily")}</option>
+                <option value="weekly">{t("frequencyWeekly")}</option>
+                <option value="monthly">{t("frequencyMonthly")}</option>
+              </select>
             </label>
-            <label className="form-field">
-              <span>{t("nextRun")}</span>
-              <input
-                type="datetime-local"
-                value={report.nextRunAt}
-                onChange={(e) =>
-                  setReport({ ...report, nextRunAt: e.target.value })
-                }
-              />
-            </label>
+            {frequency !== "manual" && (
+              <>
+                <label className="form-field">
+                  <span>{t("reportTime")}</span>
+                  <input
+                    type="time"
+                    value={sendTime}
+                    onChange={(e) => setSendTime(e.target.value)}
+                  />
+                </label>
+                <label className="form-field">
+                  <span>
+                    {t("nextRun")} <em>{t("optional")}</em>
+                  </span>
+                  <input
+                    type="datetime-local"
+                    value={report.nextRunAt}
+                    onChange={(e) =>
+                      setReport({ ...report, nextRunAt: e.target.value })
+                    }
+                  />
+                </label>
+              </>
+            )}
             <button className="primary-button" disabled={saving}>
               <Plus size={16} />
               {t("scheduleReport")}
@@ -899,8 +923,8 @@ export function AdvancedPage() {
                 <div>
                   <strong>{r.name}</strong>
                   <span>
-                    {r.reportType} · {r.format} ·{" "}
-                    {r.scheduleCron || t("manual")}
+                    {t(`reportType${r.reportType}`)} · {r.format} ·{" "}
+                    {describeCron(r.scheduleCron, t)}
                   </span>
                   <small>{r.recipients.join(", ") || t("noRecipients")}</small>
                 </div>

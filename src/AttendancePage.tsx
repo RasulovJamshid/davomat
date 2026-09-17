@@ -21,6 +21,7 @@ import type { EmployeeRow, ExceptionItem } from "./data";
 import { intlLocale, useI18n } from "./i18n";
 import { AttendanceEventsModal } from "./AttendanceEventsModal";
 import { GeofenceStatus } from "./GeofenceStatus";
+import { Hint, PageGuide } from "./Guidance";
 
 export type AttendanceTab = "records" | "exceptions";
 type RecordFilter = "all" | "working" | "attention";
@@ -833,6 +834,17 @@ export function AttendancePage({
           </button>
         </div>
       </div>
+      <PageGuide
+        id="attendance"
+        steps={[
+          t("guideAttendance1"),
+          t("guideAttendance2"),
+          t("guideAttendance3"),
+        ]}
+      />
+      {!loading && !records.length && (
+        <Hint>{t("recordTimeNeedsRecords")}</Hint>
+      )}
       <AttendanceSummary records={records} />
       <div className="workspace-tabs" role="tablist">
         <button

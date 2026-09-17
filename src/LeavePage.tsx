@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { fetchLeaves, resolveLeave, type ApiLeave } from "./workforceApi";
 import { intlLocale, useI18n } from "./i18n";
+import { AdvancedPage } from "./AdvancedPage";
+import { PageGuide } from "./Guidance";
 
 const leaveKeys = {
   ANNUAL: "annualLeave",
@@ -209,6 +211,10 @@ export function LeavePage() {
           <p>{t("leaveDescription")}</p>
         </div>
       </div>
+      <PageGuide
+        id="requests"
+        steps={[t("guideRequests1"), t("guideRequests2"), t("guideRequests3")]}
+      />
       <section className="leave-stats">
         <article>
           <span>
@@ -296,6 +302,7 @@ export function LeavePage() {
           )}
         </div>
       </section>
+      <AdvancedPage section="swaps" />
       <div className={`toast ${toast ? "visible" : ""}`}>
         <Check size={17} />
         {toast}

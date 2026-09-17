@@ -3334,3 +3334,323 @@ export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
     </label>
   );
 }
+
+// UX guidance, setup checklist, and unified terminology.
+Object.assign(en, {
+  exceptions: "Issues",
+  correctionInbox: "Attendance issues",
+  correctionInboxDescription:
+    "Late arrivals, missing clock events, location problems, and correction requests. Review each one before payroll.",
+  needsAttentionTitle: "Attendance issues",
+  resolveBeforePayroll: "Resolve issues before payroll",
+  viewExceptionInbox: "View all issues",
+  openExceptions: "Open issues",
+  leave: "Requests",
+  leaveDescription: "Leave requests and shift swaps waiting for your decision.",
+  reportsDescription:
+    "Employee summaries, exports, and scheduled email reports.",
+  dailyWork: "Time & attendance",
+  management: "Team & pay",
+  workingOfTotal: "{count}% of {total} active employees",
+  guideTitle: "What you can do here",
+  guideAttendance1:
+    "Pick a date and check who clocked in, from where, and for how long.",
+  guideAttendance2:
+    "Open the Issues tab to approve or reject late arrivals, missing events, and correction requests.",
+  guideAttendance3:
+    "Use Record time to add a clock event an employee could not record.",
+  guideSchedule1:
+    "Set a weekly schedule once for everyone, a department, a location, or one employee. It repeats automatically.",
+  guideSchedule2:
+    "Open the calendar only to change a single shift or add a one-off assignment.",
+  guideSchedule3:
+    "Turn on live-location tracking on a shift when you need to see where someone is.",
+  guidePeople1: "Add employees with their job, location, and pay type.",
+  guidePeople2:
+    "Open a profile to edit details, create a login, or reset a phone.",
+  guidePeople3: "Removed employees are archived and keep their history.",
+  guidePayroll1:
+    "Generate the month, then review each payslip. Click a row to see the full calculation.",
+  guidePayroll2:
+    "Add adjustments with a reason, approve ready payslips, then mark the period paid.",
+  guidePayroll3:
+    "Overtime, night, holiday, and tax rules live in the Pay rules tab.",
+  guideRequests1: "Approve or reject leave requests with a short note.",
+  guideRequests2:
+    "Coverage warnings show when a request leaves a shift uncovered.",
+  guideRequests3: "Shift swaps between employees are approved lower down.",
+  guideReports1:
+    "Choose a period to see hours, lateness, absences, and estimated pay per employee.",
+  guideReports2: "Download CSV files for attendance, payroll, or accounting.",
+  guideReports3:
+    "Schedule a report to be emailed automatically every day, week, or month.",
+  guideSettings1: "Set the company name, timezone, currency, and leave policy.",
+  guideSettings2:
+    "Add departments and work locations with a map zone for clock-ins.",
+  guideSettings3:
+    "Connect face terminals or kiosks and check email and Telegram delivery.",
+  setupTitle: "Set up your workspace",
+  setupIntro: "Three short steps before your team can clock in.",
+  setupProgress: "{done} of {total} done",
+  setupHide: "Hide this checklist",
+  setupDone: "Done",
+  setupOpen: "Open",
+  setupLocations: "Add a work location",
+  setupLocationsHelp:
+    "Where people work. Clock-ins are checked against this location.",
+  setupEmployees: "Add employees",
+  setupEmployeesHelp: "Name, job, location, and pay type for each person.",
+  setupSchedule: "Set a weekly schedule",
+  setupScheduleHelp:
+    "Working days and hours. Shifts are published automatically every week.",
+  setupDevices: "Connect a clock device",
+  setupDevicesHelp:
+    "Face terminals, kiosks, or turnstiles. Phones and the browser work without this.",
+  payrollTabPayslips: "Payslips",
+  payrollTabRules: "Pay rules & holidays",
+  payrollStepGenerate: "Generate",
+  payrollStepReview: "Review",
+  payrollStepApprove: "Approve",
+  payrollStepPaid: "Paid",
+  payrollStepGenerateHint:
+    "Start by generating the current month from attendance.",
+  payrollStepReviewHint:
+    "Check each payslip and add adjustments. Payslips that need review are listed first.",
+  payrollStepApproveHint:
+    "All payslips are ready. Approve them to lock the amounts.",
+  payrollStepPaidHint:
+    "Every payslip is approved. Mark the period paid when the money has been sent.",
+  payrollStepDoneHint: "This period is closed and paid.",
+  recordTimeNeedsRecords:
+    "Record time becomes available once employees have a shift or record on this day.",
+  settingsDevices: "Clock devices",
+  settingsDevicesDescription:
+    "Register face terminals, kiosks, and turnstiles, and link employees to them.",
+  reportFrequency: "Send automatically",
+  frequencyManual: "Only when I download it",
+  frequencyDaily: "Every day",
+  frequencyWeekly: "Every Monday",
+  frequencyMonthly: "On the 1st of each month",
+  reportTime: "Send at",
+  recipientsHelp: "Email addresses separated by commas.",
+  reportTypeATTENDANCE: "Attendance",
+  reportTypePAYROLL: "Payroll",
+  reportTypeACCOUNTING: "Accounting",
+  reportTypeAUDIT: "Audit log",
+  formContact: "Contact",
+  formJobPay: "Job & pay",
+  calendarView: "Calendar (one-off changes)",
+});
+Object.assign(uz, {
+  exceptions: "Muammolar",
+  correctionInbox: "Davomat muammolari",
+  correctionInboxDescription:
+    "Kechikishlar, yo‘q yozuvlar, joylashuv muammolari va tuzatish so‘rovlari. Ish haqidan oldin har birini ko‘rib chiqing.",
+  needsAttentionTitle: "Davomat muammolari",
+  resolveBeforePayroll: "Ish haqidan oldin muammolarni hal qiling",
+  viewExceptionInbox: "Barcha muammolarni ko‘rish",
+  openExceptions: "Ochiq muammolar",
+  leave: "So‘rovlar",
+  leaveDescription:
+    "Qaroringizni kutayotgan ta’til so‘rovlari va smena almashinuvlari.",
+  reportsDescription:
+    "Xodimlar bo‘yicha xulosalar, eksportlar va rejalashtirilgan hisobotlar.",
+  dailyWork: "Vaqt va davomat",
+  management: "Jamoa va ish haqi",
+  workingOfTotal: "{total} faol xodimning {count}%",
+  guideTitle: "Bu yerda nima qilish mumkin",
+  guideAttendance1:
+    "Sanani tanlab, kim qachon, qayerdan va qancha vaqt ishlaganini ko‘ring.",
+  guideAttendance2:
+    "Muammolar bo‘limida kechikish, yo‘q yozuv va tuzatish so‘rovlarini tasdiqlang yoki rad eting.",
+  guideAttendance3:
+    "Xodim belgilay olmagan hodisani Vaqtni kiritish orqali qo‘shing.",
+  guideSchedule1:
+    "Haftalik jadvalni bir marta sozlang: hamma, bo‘lim, joy yoki bitta xodim uchun. U avtomatik takrorlanadi.",
+  guideSchedule2:
+    "Taqvimni faqat bitta smenani o‘zgartirish yoki bir martalik smena qo‘shish uchun oching.",
+  guideSchedule3: "Kerak bo‘lsa smenada jonli joylashuv kuzatuvini yoqing.",
+  guidePeople1: "Xodimlarni lavozimi, ish joyi va to‘lov turi bilan qo‘shing.",
+  guidePeople2:
+    "Profilni ochib ma’lumotlarni o‘zgartiring, login yarating yoki telefonni tiklang.",
+  guidePeople3: "O‘chirilgan xodimlar arxivlanadi va tarixi saqlanadi.",
+  guidePayroll1:
+    "Oyni yarating, so‘ng har bir hisob varaqasini ko‘rib chiqing. To‘liq hisobni ko‘rish uchun qatorni bosing.",
+  guidePayroll2:
+    "Sabab bilan tuzatish qo‘shing, tayyorlarini tasdiqlang, so‘ng davrni to‘langan deb belgilang.",
+  guidePayroll3:
+    "Qo‘shimcha ish, tungi, bayram va soliq qoidalari To‘lov qoidalari bo‘limida.",
+  guideRequests1:
+    "Ta’til so‘rovlarini qisqa izoh bilan tasdiqlang yoki rad eting.",
+  guideRequests2:
+    "So‘rov smenani bo‘sh qoldirsa, qamrov ogohlantirishi ko‘rinadi.",
+  guideRequests3:
+    "Xodimlar orasidagi smena almashinuvlari pastda tasdiqlanadi.",
+  guideReports1:
+    "Davrni tanlab har bir xodimning soatlari, kechikishlari, kelmagan kunlari va taxminiy ish haqini ko‘ring.",
+  guideReports2: "Davomat, ish haqi yoki buxgalteriya uchun CSV yuklab oling.",
+  guideReports3:
+    "Hisobot har kuni, hafta yoki oyda avtomatik yuborilishini sozlang.",
+  guideSettings1:
+    "Kompaniya nomi, vaqt mintaqasi, valyuta va ta’til siyosatini belgilang.",
+  guideSettings2: "Bo‘limlar va ish joylarini xaritadagi zona bilan qo‘shing.",
+  guideSettings3:
+    "Yuz terminallari yoki kiosklarni ulang, email va Telegram holatini tekshiring.",
+  setupTitle: "Ish maydonini sozlang",
+  setupIntro: "Jamoa ishga kelishni belgilashi uchun uchta qisqa qadam.",
+  setupProgress: "{total} tadan {done} tasi bajarildi",
+  setupHide: "Ro‘yxatni yashirish",
+  setupDone: "Bajarildi",
+  setupOpen: "Ochish",
+  setupLocations: "Ish joyini qo‘shing",
+  setupLocationsHelp:
+    "Odamlar ishlaydigan joy. Kelish belgilari shu joyga qarab tekshiriladi.",
+  setupEmployees: "Xodimlarni qo‘shing",
+  setupEmployeesHelp: "Har bir kishining ismi, lavozimi, joyi va to‘lov turi.",
+  setupSchedule: "Haftalik jadvalni sozlang",
+  setupScheduleHelp:
+    "Ish kunlari va soatlari. Smenalar har hafta avtomatik e’lon qilinadi.",
+  setupDevices: "Davomat qurilmasini ulang",
+  setupDevicesHelp:
+    "Yuz terminallari, kiosklar yoki turniketlar. Telefon va brauzer bularsiz ham ishlaydi.",
+  payrollTabPayslips: "Hisob varaqalari",
+  payrollTabRules: "To‘lov qoidalari va bayramlar",
+  payrollStepGenerate: "Yaratish",
+  payrollStepReview: "Ko‘rib chiqish",
+  payrollStepApprove: "Tasdiqlash",
+  payrollStepPaid: "To‘landi",
+  payrollStepGenerateHint: "Avval davomat asosida joriy oyni yarating.",
+  payrollStepReviewHint:
+    "Har bir hisob varaqasini tekshiring va tuzatish qo‘shing. Ko‘rib chiqish kerak bo‘lganlar birinchi turadi.",
+  payrollStepApproveHint:
+    "Barcha varaqalar tayyor. Summalarni qulflash uchun tasdiqlang.",
+  payrollStepPaidHint:
+    "Barcha varaqalar tasdiqlangan. Pul yuborilgach davrni to‘langan deb belgilang.",
+  payrollStepDoneHint: "Bu davr yopilgan va to‘langan.",
+  recordTimeNeedsRecords:
+    "Vaqtni kiritish shu kunda xodimlarda smena yoki yozuv paydo bo‘lgach ochiladi.",
+  settingsDevices: "Davomat qurilmalari",
+  settingsDevicesDescription:
+    "Yuz terminallari, kiosklar va turniketlarni ro‘yxatga oling va xodimlarni ularga bog‘lang.",
+  reportFrequency: "Avtomatik yuborish",
+  frequencyManual: "Faqat o‘zim yuklab olganda",
+  frequencyDaily: "Har kuni",
+  frequencyWeekly: "Har dushanba",
+  frequencyMonthly: "Har oyning 1-kuni",
+  reportTime: "Yuborish vaqti",
+  recipientsHelp: "Email manzillarni vergul bilan ajrating.",
+  reportTypeATTENDANCE: "Davomat",
+  reportTypePAYROLL: "Ish haqi",
+  reportTypeACCOUNTING: "Buxgalteriya",
+  reportTypeAUDIT: "Audit jurnali",
+  formContact: "Aloqa",
+  formJobPay: "Lavozim va to‘lov",
+  calendarView: "Taqvim (bir martalik o‘zgarishlar)",
+});
+Object.assign(ru, {
+  exceptions: "Проблемы",
+  correctionInbox: "Проблемы посещаемости",
+  correctionInboxDescription:
+    "Опоздания, пропущенные отметки, проблемы с локацией и запросы на исправление. Разберите каждую до расчёта зарплаты.",
+  needsAttentionTitle: "Проблемы посещаемости",
+  resolveBeforePayroll: "Устраните проблемы до расчёта зарплаты",
+  viewExceptionInbox: "Все проблемы",
+  openExceptions: "Открытые проблемы",
+  leave: "Запросы",
+  leaveDescription:
+    "Заявки на отпуск и обмены сменами, ожидающие вашего решения.",
+  reportsDescription: "Сводки по сотрудникам, выгрузки и отчёты по расписанию.",
+  dailyWork: "Время и посещаемость",
+  management: "Команда и зарплата",
+  workingOfTotal: "{count}% из {total} активных сотрудников",
+  guideTitle: "Что здесь можно сделать",
+  guideAttendance1:
+    "Выберите дату и посмотрите, кто отметился, откуда и сколько отработал.",
+  guideAttendance2:
+    "На вкладке «Проблемы» утвердите или отклоните опоздания, пропуски и запросы на исправление.",
+  guideAttendance3:
+    "Через «Записать время» добавьте отметку, которую сотрудник не смог сделать.",
+  guideSchedule1:
+    "Настройте недельный график один раз: для всех, отдела, локации или одного сотрудника. Он повторяется автоматически.",
+  guideSchedule2:
+    "Календарь нужен только чтобы изменить одну смену или добавить разовую.",
+  guideSchedule3:
+    "Включите отслеживание геолокации на смене, если нужно видеть, где сотрудник.",
+  guidePeople1: "Добавьте сотрудников с должностью, локацией и типом оплаты.",
+  guidePeople2:
+    "Откройте профиль, чтобы изменить данные, создать логин или сбросить телефон.",
+  guidePeople3: "Удалённые сотрудники архивируются, история сохраняется.",
+  guidePayroll1:
+    "Создайте месяц, затем проверьте каждый расчётный лист. Нажмите на строку, чтобы увидеть полный расчёт.",
+  guidePayroll2:
+    "Добавьте корректировки с причиной, утвердите готовые листы и отметьте период оплаченным.",
+  guidePayroll3:
+    "Правила сверхурочных, ночных, праздничных и налогов — на вкладке «Правила оплаты».",
+  guideRequests1:
+    "Утверждайте или отклоняйте заявки на отпуск с короткой заметкой.",
+  guideRequests2:
+    "Предупреждение о покрытии показывает, что смена останется без сотрудника.",
+  guideRequests3: "Обмены сменами между сотрудниками утверждаются ниже.",
+  guideReports1:
+    "Выберите период, чтобы увидеть часы, опоздания, отсутствия и расчётную оплату по каждому сотруднику.",
+  guideReports2: "Скачайте CSV по посещаемости, зарплате или бухгалтерии.",
+  guideReports3:
+    "Настройте автоматическую отправку отчёта каждый день, неделю или месяц.",
+  guideSettings1:
+    "Укажите название компании, часовой пояс, валюту и политику отпусков.",
+  guideSettings2:
+    "Добавьте отделы и рабочие локации с зоной на карте для отметок.",
+  guideSettings3:
+    "Подключите терминалы или киоски и проверьте доставку email и Telegram.",
+  setupTitle: "Настройте рабочее пространство",
+  setupIntro: "Три коротких шага, прежде чем команда сможет отмечаться.",
+  setupProgress: "Готово {done} из {total}",
+  setupHide: "Скрыть список",
+  setupDone: "Готово",
+  setupOpen: "Открыть",
+  setupLocations: "Добавьте рабочую локацию",
+  setupLocationsHelp:
+    "Где работают люди. Отметки проверяются относительно этой локации.",
+  setupEmployees: "Добавьте сотрудников",
+  setupEmployeesHelp: "Имя, должность, локация и тип оплаты для каждого.",
+  setupSchedule: "Настройте недельный график",
+  setupScheduleHelp:
+    "Рабочие дни и часы. Смены публикуются автоматически каждую неделю.",
+  setupDevices: "Подключите устройство учёта",
+  setupDevicesHelp:
+    "Терминалы, киоски или турникеты. Телефон и браузер работают и без этого.",
+  payrollTabPayslips: "Расчётные листы",
+  payrollTabRules: "Правила оплаты и праздники",
+  payrollStepGenerate: "Создать",
+  payrollStepReview: "Проверить",
+  payrollStepApprove: "Утвердить",
+  payrollStepPaid: "Оплачено",
+  payrollStepGenerateHint:
+    "Сначала создайте текущий месяц по данным посещаемости.",
+  payrollStepReviewHint:
+    "Проверьте каждый лист и добавьте корректировки. Листы, требующие проверки, показаны первыми.",
+  payrollStepApproveHint:
+    "Все листы готовы. Утвердите их, чтобы зафиксировать суммы.",
+  payrollStepPaidHint:
+    "Все листы утверждены. Отметьте период оплаченным, когда деньги отправлены.",
+  payrollStepDoneHint: "Период закрыт и оплачен.",
+  recordTimeNeedsRecords:
+    "«Записать время» станет доступно, когда у сотрудников появится смена или запись за этот день.",
+  settingsDevices: "Устройства учёта",
+  settingsDevicesDescription:
+    "Зарегистрируйте терминалы, киоски и турникеты и привяжите к ним сотрудников.",
+  reportFrequency: "Отправлять автоматически",
+  frequencyManual: "Только при ручной выгрузке",
+  frequencyDaily: "Каждый день",
+  frequencyWeekly: "Каждый понедельник",
+  frequencyMonthly: "1-го числа каждого месяца",
+  reportTime: "Время отправки",
+  recipientsHelp: "Адреса email через запятую.",
+  reportTypeATTENDANCE: "Посещаемость",
+  reportTypePAYROLL: "Зарплата",
+  reportTypeACCOUNTING: "Бухгалтерия",
+  reportTypeAUDIT: "Журнал аудита",
+  formContact: "Контакты",
+  formJobPay: "Должность и оплата",
+  calendarView: "Календарь (разовые изменения)",
+});

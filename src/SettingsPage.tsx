@@ -17,6 +17,8 @@ import {
   X,
 } from "lucide-react";
 import { apiRequest, type SessionUser } from "./api";
+import { AdvancedPage } from "./AdvancedPage";
+import { PageGuide } from "./Guidance";
 import {
   createDepartment,
   createLocation,
@@ -91,11 +93,25 @@ const auditEntityKeys: Record<string, string> = {
 export function SettingsPage({
   user,
   onCompanyUpdated,
+  focusSection,
 }: {
   user: SessionUser;
   onCompanyUpdated: (name: string) => void;
+  /** Section id to scroll to on open, e.g. from the setup checklist. */
+  focusSection?: string;
 }) {
   const { t, locale } = useI18n();
+  useEffect(() => {
+    if (!focusSection) return;
+    const timer = window.setTimeout(
+      () =>
+        document
+          .getElementById(focusSection)
+          ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      150,
+    );
+    return () => window.clearTimeout(timer);
+  }, [focusSection]);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
@@ -373,12 +389,17 @@ export function SettingsPage({
           <button onClick={() => setSetupError("")}>{t("dismiss")}</button>
         </div>
       )}
+      <PageGuide
+        id="settings"
+        steps={[t("guideSettings1"), t("guideSettings2"), t("guideSettings3")]}
+      />
       <nav className="settings-jump-nav" aria-label={t("settingsSections")}>
         {[
           ["settings-account", t("yourAccount")],
           ["settings-company", t("companyConfiguration")],
           ["settings-departments", t("departments")],
           ["settings-locations", t("workLocations")],
+          ["settings-devices", t("settingsDevices")],
           ["settings-activity", t("recentActivity")],
           ["settings-integrations", t("integrationReadiness")],
         ].map(([target, label]) => (
@@ -821,6 +842,18 @@ export function SettingsPage({
           )}
         </div>
       </form>
+      <section className="settings-devices" id="settings-devices">
+        <div className="settings-card-heading">
+          <span>
+            <Smartphone size={19} />
+          </span>
+          <div>
+            <h2>{t("settingsDevices")}</h2>
+            <p>{t("settingsDevicesDescription")}</p>
+          </div>
+        </div>
+        <AdvancedPage section="devices" />
+      </section>
       <section
         className="panel settings-card audit-card"
         id="settings-activity"

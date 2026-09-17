@@ -31,6 +31,54 @@ import {
 } from "./workforceApi";
 import { tashkentDate } from "./operationsApi";
 import { intlLocale, useI18n, type Locale } from "./i18n";
+import { AdvancedPage } from "./AdvancedPage";
+import { PageGuide } from "./Guidance";
+
+type PayrollStep = "generate" | "review" | "approve" | "paid" | "done";
+const payrollSteps: Array<Exclude<PayrollStep, "done">> = [
+  "generate",
+  "review",
+  "approve",
+  "paid",
+];
+const stepLabelKey: Record<Exclude<PayrollStep, "done">, string> = {
+  generate: "payrollStepGenerate",
+  review: "payrollStepReview",
+  approve: "payrollStepApprove",
+  paid: "payrollStepPaid",
+};
+
+/** Shows where the period is in Generate → Review → Approve → Paid. */
+function PayrollStepper({ step }: { step: PayrollStep }) {
+  const { t } = useI18n();
+  const index =
+    step === "done" ? payrollSteps.length : payrollSteps.indexOf(step);
+  return (
+    <div className="payroll-stepper" role="group" aria-label={t("payroll")}>
+      <ol>
+        {payrollSteps.map((name, position) => (
+          <li
+            key={name}
+            className={
+              position < index ? "done" : position === index ? "current" : ""
+            }
+            aria-current={position === index ? "step" : undefined}
+          >
+            <span>{position < index ? <Check size={13} /> : position + 1}</span>
+            {t(stepLabelKey[name])}
+          </li>
+        ))}
+      </ol>
+      <p>
+        {t(
+          step === "done"
+            ? "payrollStepDoneHint"
+            : `payrollStep${step[0].toUpperCase()}${step.slice(1)}Hint`,
+        )}
+      </p>
+    </div>
+  );
+}
 
 type PayslipStatus = ApiPayslip["status"];
 type PayrollFilter = "ALL" | PayslipStatus;
@@ -322,9 +370,31 @@ function PayslipDrawer({
               </dt>
               <dd>+ {formatUzs(person.overtimePay)}</dd>
             </div>
-            <div><dt><span>{t("nightWork")}</span><small>{t("minutesShort",{count:person.nightMinutes})}</small></dt><dd>+ {formatUzs(person.nightPay)}</dd></div>
-            <div><dt><span>{t("holidayWork")}</span><small>{t("minutesShort",{count:person.holidayMinutes})}</small></dt><dd>+ {formatUzs(person.holidayPay)}</dd></div>
-            <div><dt><span>{t("benefits")}</span><small>{t("configuredBenefits")}</small></dt><dd>+ {formatUzs(person.benefits)}</dd></div>
+            <div>
+              <dt>
+                <span>{t("nightWork")}</span>
+                <small>
+                  {t("minutesShort", { count: person.nightMinutes })}
+                </small>
+              </dt>
+              <dd>+ {formatUzs(person.nightPay)}</dd>
+            </div>
+            <div>
+              <dt>
+                <span>{t("holidayWork")}</span>
+                <small>
+                  {t("minutesShort", { count: person.holidayMinutes })}
+                </small>
+              </dt>
+              <dd>+ {formatUzs(person.holidayPay)}</dd>
+            </div>
+            <div>
+              <dt>
+                <span>{t("benefits")}</span>
+                <small>{t("configuredBenefits")}</small>
+              </dt>
+              <dd>+ {formatUzs(person.benefits)}</dd>
+            </div>
             <div>
               <dt>
                 <span>{t("bonuses")}</span>
@@ -508,6 +578,18 @@ export function PayrollPage({
   const reviewCount = periodPayroll.filter(
     (person) => person.status === "REVIEW",
   ).length;
+  const [payrollTab, setPayrollTab] = useState<"payslips" | "rules">(
+    "payslips",
+  );
+  const step: PayrollStep = !periodPayroll.length
+    ? "generate"
+    : reviewCount > 0
+      ? "review"
+      : periodPayroll.some((person) => person.status === "READY")
+        ? "approve"
+        : periodPayroll.every((person) => person.status === "PAID")
+          ? "done"
+          : "paid";
   const notify = (message: string) => {
     setToast(message);
     window.setTimeout(() => setToast(""), 2500);
@@ -591,7 +673,9 @@ export function PayrollPage({
         t("employee"),
         t("baseSalary"),
         t("overtimePay"),
-        t("nightWork"),t("holidayWork"),t("benefits"),
+        t("nightWork"),
+        t("holidayWork"),
+        t("benefits"),
         t("bonuses"),
         t("deductions"),
         t("tax"),
@@ -602,7 +686,9 @@ export function PayrollPage({
         person.employee,
         person.baseSalary,
         person.overtimePay,
-        person.nightPay,person.holidayPay,person.benefits,
+        person.nightPay,
+        person.holidayPay,
+        person.benefits,
         person.bonuses,
         person.deductions,
         person.tax,
@@ -697,199 +783,231 @@ export function PayrollPage({
           <button onClick={load}>{t("tryAgain")}</button>
         </div>
       )}
-      <section className="payroll-hero">
-        <div>
-          <span className="hero-icon">
-            <WalletCards size={23} />
-          </span>
-          <div>
-            <p>{t("estimatedNetPayroll")}</p>
-            <strong>{formatUzs(totals.net)}</strong>
-            <span>
-              {activePeriod
-                ? periodLabel(
-                    activePeriod.startsOn,
-                    activePeriod.endsOn,
-                    locale,
-                  )
-                : t("noPeriodSelected")}{" "}
-              · {t("payslipCount", { count: periodPayroll.length })}
-            </span>
-          </div>
-        </div>
-        <div className="payroll-progress">
-          <div>
-            <span>{t("periodReadiness")}</span>
-            <strong>{readiness}%</strong>
-          </div>
-          <div className="progress-track">
-            <span style={{ width: `${readiness}%` }} />
-          </div>
-          <p>
-            <CheckCircle2 size={15} />
-            {t("readyApproved", { count: completed })} <span>·</span>
-            <AlertTriangle size={15} />
-            {t("needReviewCount", { count: reviewCount })}
-          </p>
-        </div>
-      </section>
-      <div className="payroll-summary">
-        <article>
-          <span>
-            <CircleDollarSign size={18} />
-          </span>
-          <div>
-            <small>{t("grossEarnings")}</small>
-            <strong>{formatUzs(totals.gross)}</strong>
-          </div>
-        </article>
-        <article>
-          <span>
-            <MinusCircle size={18} />
-          </span>
-          <div>
-            <small>{t("taxDeductions")}</small>
-            <strong>{formatUzs(totals.deductions)}</strong>
-          </div>
-        </article>
-        <article>
-          <span>
-            <Banknote size={18} />
-          </span>
-          <div>
-            <small>{t("netPayable")}</small>
-            <strong>{formatUzs(totals.net)}</strong>
-          </div>
-        </article>
-        <article>
-          <span>
-            <FileCheck2 size={18} />
-          </span>
-          <div>
-            <small>{t("approvedPayslips")}</small>
-            <strong>
-              {t("countOf", {
-                count: periodPayroll.filter((person) =>
-                  ["APPROVED", "PAID"].includes(person.status),
-                ).length,
-                total: periodPayroll.length,
-              })}
-            </strong>
-          </div>
-        </article>
+      <PageGuide
+        id="payroll"
+        steps={[t("guidePayroll1"), t("guidePayroll2"), t("guidePayroll3")]}
+      />
+      <div className="workspace-tabs" role="tablist">
+        <button
+          role="tab"
+          aria-selected={payrollTab === "payslips"}
+          className={payrollTab === "payslips" ? "active" : ""}
+          onClick={() => setPayrollTab("payslips")}
+        >
+          {t("payrollTabPayslips")} <span>{periodPayroll.length}</span>
+        </button>
+        <button
+          role="tab"
+          aria-selected={payrollTab === "rules"}
+          className={payrollTab === "rules" ? "active" : ""}
+          onClick={() => setPayrollTab("rules")}
+        >
+          {t("payrollTabRules")}
+        </button>
       </div>
-      <section className="panel payroll-workspace">
-        <div className="payroll-toolbar">
-          <label className="workspace-search">
-            <Search size={17} />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={t("searchEmployee")}
-            />
-          </label>
-          <div className="payroll-filters">
-            <label className="payroll-period-select">
-              <CalendarDays size={16} />
-              <select
-                value={selectedPeriod}
-                onChange={(event) => setSelectedPeriod(event.target.value)}
-              >
-                {periods.length ? (
-                  <>
-                    {periods.map((period) => (
-                      <option value={period.id} key={period.id}>
-                        {periodLabel(period.start, period.end, locale)}
-                      </option>
-                    ))}
-                  </>
-                ) : (
-                  <option value="">{t("noPayrollPeriods")}</option>
-                )}
-              </select>
-              <ChevronDown size={15} />
-            </label>
-            {(
-              ["ALL", "READY", "REVIEW", "APPROVED", "PAID"] as PayrollFilter[]
-            ).map((item) => (
-              <button
-                className={filter === item ? "active" : ""}
-                key={item}
-                onClick={() => setFilter(item)}
-              >
-                {item === "ALL" ? t("all") : t(statusTranslationKey[item])}
-              </button>
-            ))}
+      {payrollTab === "rules" && <AdvancedPage section="payroll" />}
+      <div hidden={payrollTab !== "payslips"}>
+        <PayrollStepper step={step} />
+        <section className="payroll-hero">
+          <div>
+            <span className="hero-icon">
+              <WalletCards size={23} />
+            </span>
+            <div>
+              <p>{t("estimatedNetPayroll")}</p>
+              <strong>{formatUzs(totals.net)}</strong>
+              <span>
+                {activePeriod
+                  ? periodLabel(
+                      activePeriod.startsOn,
+                      activePeriod.endsOn,
+                      locale,
+                    )
+                  : t("noPeriodSelected")}{" "}
+                · {t("payslipCount", { count: periodPayroll.length })}
+              </span>
+            </div>
           </div>
+          <div className="payroll-progress">
+            <div>
+              <span>{t("periodReadiness")}</span>
+              <strong>{readiness}%</strong>
+            </div>
+            <div className="progress-track">
+              <span style={{ width: `${readiness}%` }} />
+            </div>
+            <p>
+              <CheckCircle2 size={15} />
+              {t("readyApproved", { count: completed })} <span>·</span>
+              <AlertTriangle size={15} />
+              {t("needReviewCount", { count: reviewCount })}
+            </p>
+          </div>
+        </section>
+        <div className="payroll-summary">
+          <article>
+            <span>
+              <CircleDollarSign size={18} />
+            </span>
+            <div>
+              <small>{t("grossEarnings")}</small>
+              <strong>{formatUzs(totals.gross)}</strong>
+            </div>
+          </article>
+          <article>
+            <span>
+              <MinusCircle size={18} />
+            </span>
+            <div>
+              <small>{t("taxDeductions")}</small>
+              <strong>{formatUzs(totals.deductions)}</strong>
+            </div>
+          </article>
+          <article>
+            <span>
+              <Banknote size={18} />
+            </span>
+            <div>
+              <small>{t("netPayable")}</small>
+              <strong>{formatUzs(totals.net)}</strong>
+            </div>
+          </article>
+          <article>
+            <span>
+              <FileCheck2 size={18} />
+            </span>
+            <div>
+              <small>{t("approvedPayslips")}</small>
+              <strong>
+                {t("countOf", {
+                  count: periodPayroll.filter((person) =>
+                    ["APPROVED", "PAID"].includes(person.status),
+                  ).length,
+                  total: periodPayroll.length,
+                })}
+              </strong>
+            </div>
+          </article>
         </div>
-        <div className="table-wrap">
-          <table className="payroll-table">
-            <thead>
-              <tr>
-                <th>{t("employee")}</th>
-                <th>{t("baseSalary")}</th>
-                <th>{t("overtime")}</th>
-                <th>{t("additions")}</th>
-                <th>{t("deductionsTax")}</th>
-                <th>{t("netPay")}</th>
-                <th>{t("status")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
+        <section className="panel payroll-workspace">
+          <div className="payroll-toolbar">
+            <label className="workspace-search">
+              <Search size={17} />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={t("searchEmployee")}
+              />
+            </label>
+            <div className="payroll-filters">
+              <label className="payroll-period-select">
+                <CalendarDays size={16} />
+                <select
+                  value={selectedPeriod}
+                  onChange={(event) => setSelectedPeriod(event.target.value)}
+                >
+                  {periods.length ? (
+                    <>
+                      {periods.map((period) => (
+                        <option value={period.id} key={period.id}>
+                          {periodLabel(period.start, period.end, locale)}
+                        </option>
+                      ))}
+                    </>
+                  ) : (
+                    <option value="">{t("noPayrollPeriods")}</option>
+                  )}
+                </select>
+                <ChevronDown size={15} />
+              </label>
+              {(
+                [
+                  "ALL",
+                  "READY",
+                  "REVIEW",
+                  "APPROVED",
+                  "PAID",
+                ] as PayrollFilter[]
+              ).map((item) => (
+                <button
+                  className={filter === item ? "active" : ""}
+                  key={item}
+                  onClick={() => setFilter(item)}
+                >
+                  {item === "ALL" ? t("all") : t(statusTranslationKey[item])}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="table-wrap">
+            <table className="payroll-table">
+              <thead>
                 <tr>
-                  <td colSpan={7}>{t("loadingPayroll")}</td>
+                  <th>{t("employee")}</th>
+                  <th>{t("baseSalary")}</th>
+                  <th>{t("overtime")}</th>
+                  <th>{t("additions")}</th>
+                  <th>{t("deductionsTax")}</th>
+                  <th>{t("netPay")}</th>
+                  <th>{t("status")}</th>
                 </tr>
-              ) : filtered.length ? (
-                filtered.map((person) => (
-                  <tr
-                    className="clickable-row"
-                    key={person.id}
-                    onClick={() => setSelectedId(person.id)}
-                  >
-                    <td>
-                      <div className="employee-cell">
-                        <PayrollAvatar person={person} />
-                        <div>
-                          <strong>{person.employee}</strong>
-                          <span>{person.role}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="mono">{formatUzs(person.baseSalary)}</td>
-                    <td className="positive-value">
-                      + {formatUzs(person.overtimePay)}
-                    </td>
-                    <td className="positive-value">
-                      + {formatUzs(person.bonuses)}
-                    </td>
-                    <td className="negative-value">
-                      − {formatUzs(person.deductions + person.tax)}
-                    </td>
-                    <td className="net-value">{formatUzs(person.netPay)}</td>
-                    <td>
-                      <span
-                        className={`payslip-status ${person.status.toLowerCase()}`}
-                      >
-                        <i />
-                        {t(statusTranslationKey[person.status])}
-                      </span>
-                    </td>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={7}>{t("loadingPayroll")}</td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7}>{t("noPayslips")}</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="table-footer">
-          <span>{t("payslipsShown", { count: filtered.length })}</span>
-          <span>{t("openCalculation")}</span>
-        </div>
-      </section>
+                ) : filtered.length ? (
+                  filtered.map((person) => (
+                    <tr
+                      className="clickable-row"
+                      key={person.id}
+                      onClick={() => setSelectedId(person.id)}
+                    >
+                      <td>
+                        <div className="employee-cell">
+                          <PayrollAvatar person={person} />
+                          <div>
+                            <strong>{person.employee}</strong>
+                            <span>{person.role}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="mono">{formatUzs(person.baseSalary)}</td>
+                      <td className="positive-value">
+                        + {formatUzs(person.overtimePay)}
+                      </td>
+                      <td className="positive-value">
+                        + {formatUzs(person.bonuses)}
+                      </td>
+                      <td className="negative-value">
+                        − {formatUzs(person.deductions + person.tax)}
+                      </td>
+                      <td className="net-value">{formatUzs(person.netPay)}</td>
+                      <td>
+                        <span
+                          className={`payslip-status ${person.status.toLowerCase()}`}
+                        >
+                          <i />
+                          {t(statusTranslationKey[person.status])}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7}>{t("noPayslips")}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="table-footer">
+            <span>{t("payslipsShown", { count: filtered.length })}</span>
+            <span>{t("openCalculation")}</span>
+          </div>
+        </section>
+      </div>
       {selected && !adjusting && (
         <PayslipDrawer
           person={selected}

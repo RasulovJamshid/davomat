@@ -35,6 +35,7 @@ import { intlLocale, useI18n } from "./i18n";
 import { TasksPage } from "./TasksPage";
 import { WorkforceReport } from "./WorkforceReport";
 import { EmployeeActivity } from "./EmployeeActivity";
+import { PageGuide } from "./Guidance";
 
 type EmploymentStatus = "ACTIVE" | "ON_LEAVE" | "INVITED" | "INACTIVE";
 type DirectoryFilter = "ALL" | EmploymentStatus;
@@ -306,6 +307,7 @@ function AddEmployeeModal({
         </div>
         <p className="modal-intro">{t("onboardingDescription")}</p>
         <div className="people-form-grid">
+          <h3 className="form-section-title full">{t("formContact")}</h3>
           <label
             className={`form-field full ${errors.name ? "has-error" : ""}`}
           >
@@ -338,6 +340,7 @@ function AddEmployeeModal({
             />
             {errors.email && <small>{errors.email}</small>}
           </label>
+          <h3 className="form-section-title full">{t("formJobPay")}</h3>
           <SelectField
             label={t("jobTitle")}
             name="role"
@@ -1284,6 +1287,10 @@ export function PeoplePage({
           {t("addEmployee")}
         </button>
       </div>
+      <PageGuide
+        id="people"
+        steps={[t("guidePeople1"), t("guidePeople2"), t("guidePeople3")]}
+      />
       <div className="people-stats">
         <article>
           <span>

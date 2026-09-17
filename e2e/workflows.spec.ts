@@ -29,8 +29,7 @@ test("manager can navigate every operational workspace and switch language", asy
   await expect(
     page.getByRole("heading", { name: /Good afternoon/ }),
   ).toBeVisible();
-  const workspaceSwitcher = page.getByLabel("Go to workspace");
-  await expect(workspaceSwitcher).toHaveValue("Overview");
+  await expect(page).toHaveURL(/#\/overview$/);
   const initialMenu = page.getByRole("button", { name: "Open menu" });
   if (await initialMenu.isVisible()) await initialMenu.click();
   await page
@@ -153,32 +152,35 @@ test("advanced workforce controls are reachable", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: /Good afternoon/ }),
   ).toBeVisible();
+  // Former "Tools & reports" workspace now lives inside the pages it belongs to.
   const menu = page.getByRole("button", { name: "Open menu" });
   if (await menu.isVisible()) await menu.click();
   await page
     .locator("aside")
-    .getByRole("button", { name: "Tools & reports", exact: true })
-    .click();
-  await expect(
-    page.getByRole("heading", { name: "Tools & reports" }),
-  ).toBeVisible();
-  for (const name of ["Devices", "Payroll rules"]) {
-    await page.locator(".advanced-tabs").getByRole("button", { name }).click();
-  }
-  await page
-    .locator(".advanced-tabs")
-    .getByRole("button", { name: "Scheduling" })
-    .click();
-  await expect(
-    page.getByRole("heading", { name: "Company workweek", exact: true }),
-  ).toBeVisible();
-  await expect(page.getByLabel("Workday starts")).toHaveValue("08:00");
-  await page
-    .locator(".advanced-tabs")
-    .getByRole("button", { name: "Reports" })
+    .getByRole("button", { name: "Reports", exact: true })
     .click();
   await expect(
     page.getByRole("heading", { name: "Scheduled reports" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Send automatically")).toBeVisible();
+
+  if (await menu.isVisible()) await menu.click();
+  await page
+    .locator("aside")
+    .getByRole("button", { name: "Payroll", exact: true })
+    .click();
+  await page.getByRole("tab", { name: "Pay rules & holidays" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Payroll rules", exact: true }),
+  ).toBeVisible();
+
+  if (await menu.isVisible()) await menu.click();
+  await page
+    .locator("aside")
+    .getByRole("button", { name: "Settings", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Register device", exact: true }),
   ).toBeVisible();
 });
 
@@ -245,7 +247,7 @@ test("Uzbek locale covers manager dashboard and attendance details", async ({
     page.getByText("Hozir ishlamoqda", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText("Ochiq istisnolar", { exact: true }),
+    page.getByText("Ochiq muammolar", { exact: true }),
   ).toBeVisible();
   await expect(page.getByText("Jonli davomat", { exact: true })).toBeVisible();
 

@@ -9,13 +9,14 @@ import {
 } from "react";
 import {
   CalendarDays,
-  CalendarCheck,
   Check,
-  ChevronDown,
   CircleDollarSign,
+  ClipboardList,
   Clock3,
   Download,
+  FileBarChart,
   Gauge,
+  Inbox,
   LayoutGrid,
   LogOut,
   MapPin,
@@ -23,7 +24,6 @@ import {
   Search,
   Settings,
   ShieldCheck,
-  SlidersHorizontal,
   UserRoundCheck,
   UsersRound,
   X,
@@ -45,8 +45,8 @@ import { SettingsPage } from "./SettingsPage";
 import { EmployeePortal } from "./EmployeePortal";
 import { LeavePage } from "./LeavePage";
 import { AdvancedPage } from "./AdvancedPage";
-import { scheduleText } from "./scheduleCopy";
 import { NotificationCenter } from "./Notifications";
+import { PageGuide, SetupChecklist, type SetupTarget } from "./Guidance";
 import {
   fetchOperationsSnapshot,
   resolveAttendanceException,
@@ -75,7 +75,6 @@ type Page =
   | "Leave"
   | "People"
   | "Payroll"
-  | "Advanced"
   | "Settings";
 
 function RequiredPasswordChange({ onComplete }: { onComplete: () => void }) {
@@ -161,33 +160,34 @@ function RequiredPasswordChange({ onComplete }: { onComplete: () => void }) {
   );
 }
 
+// Each concept has exactly one icon so the same idea looks the same everywhere.
 const navItems: Array<{ label: Page; icon: typeof Gauge }> = [
   { label: "Overview", icon: LayoutGrid },
   { label: "Attendance", icon: Clock3 },
   { label: "Schedule", icon: CalendarDays },
   { label: "LiveLocations", icon: MapPin },
-  { label: "Leave", icon: CalendarCheck },
   { label: "People", icon: UsersRound },
-  { label: "Tasks", icon: CalendarCheck },
-  { label: "Reports", icon: Download },
+  { label: "Leave", icon: Inbox },
+  { label: "Tasks", icon: ClipboardList },
   { label: "Payroll", icon: CircleDollarSign },
-  { label: "Advanced", icon: SlidersHorizontal },
+  { label: "Reports", icon: FileBarChart },
 ];
 
+// Grouped by the job the manager is doing, not by how the features were built.
 const navGroups: Array<{
   label: "dailyWork" | "management";
   items: Array<{ label: Page; icon: typeof Gauge }>;
 }> = [
   {
     label: "dailyWork",
-    items: ["Overview", "People", "Schedule", "Attendance", "Tasks"].map(
+    items: ["Overview", "Attendance", "Schedule", "LiveLocations"].map(
       (label) => navItems.find((item) => item.label === label)!,
     ),
   },
   {
     label: "management",
-    items: ["Leave", "Payroll", "Reports", "LiveLocations", "Advanced"].map(
-      (label) => navItems.find((item) => item.label === label)!,
+    items: ["People", "Leave", "Tasks", "Payroll", "Reports"].map((label) =>
+      navItems.find((item) => item.label === label)!,
     ),
   },
 ];
@@ -202,16 +202,21 @@ const pageSlugs: Record<Page, string> = {
   Leave: "leave",
   People: "people",
   Payroll: "payroll",
-  Advanced: "advanced",
   Settings: "settings",
 };
+
+// Old bookmarks keep working after the "Advanced" workspace was folded into
+// Reports, Payroll, Requests, and Settings.
+const legacySlugs: Record<string, Page> = { advanced: "Reports" };
 
 function pageFromHash(): Page {
   const slug = window.location.hash.replace(/^#\/?/, "").toLowerCase();
   return (
     (Object.keys(pageSlugs) as Page[]).find(
       (candidate) => pageSlugs[candidate] === slug,
-    ) ?? "Overview"
+    ) ??
+    legacySlugs[slug] ??
+    "Overview"
   );
 }
 
@@ -281,8 +286,7 @@ function Sidebar({
   user: SessionUser;
   onLogout: () => void;
 }) {
-  const { t, locale } = useI18n();
-  const [sectionSearch, setSectionSearch] = useState("");
+  const { t } = useI18n();
   return (
     <aside className={`sidebar ${open ? "open" : ""}`}>
       <div className="brand">
@@ -294,42 +298,27 @@ function Sidebar({
         </span>
       </div>
 
-      <label className="section-search">
-        <Search size={16} />
-        <input
-          value={sectionSearch}
-          onChange={(e) => setSectionSearch(e.target.value)}
-          placeholder={scheduleText(locale, "find")}
-          aria-label={scheduleText(locale, "find")}
-        />
-      </label>
       <nav className="nav-group" aria-label={t("mainNavigation")}>
         {navGroups.map((group) => (
           <div className="nav-section" key={group.label}>
             <p className="nav-title">{t(group.label)}</p>
-            {group.items
-              .filter((item) =>
-                t(item.label.toLowerCase())
-                  .toLowerCase()
-                  .includes(sectionSearch.toLowerCase()),
-              )
-              .map(({ label, icon: Icon }) => (
-                <button
-                  className={`nav-item ${page === label ? "active" : ""}`}
-                  key={label}
-                  aria-current={page === label ? "page" : undefined}
-                  onClick={() => {
-                    onPageChange(label);
-                    onClose();
-                  }}
-                >
-                  <Icon size={18} />
-                  <span>{t(label.toLowerCase())}</span>
-                  {label === "Attendance" && exceptionCount > 0 && (
-                    <span className="nav-count">{exceptionCount}</span>
-                  )}
-                </button>
-              ))}
+            {group.items.map(({ label, icon: Icon }) => (
+              <button
+                className={`nav-item ${page === label ? "active" : ""}`}
+                key={label}
+                aria-current={page === label ? "page" : undefined}
+                onClick={() => {
+                  onPageChange(label);
+                  onClose();
+                }}
+              >
+                <Icon size={18} />
+                <span>{t(label.toLowerCase())}</span>
+                {label === "Attendance" && exceptionCount > 0 && (
+                  <span className="nav-count">{exceptionCount}</span>
+                )}
+              </button>
+            ))}
           </div>
         ))}
       </nav>
@@ -391,6 +380,7 @@ function Header({
 }) {
   const { t, locale } = useI18n();
   const searchRef = useRef<HTMLInputElement>(null);
+  const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
   useEffect(() => {
     const focusSearch = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
@@ -425,32 +415,10 @@ function Header({
         </span>
         <div>
           <strong>{companyName}</strong>
-          <span>{t("workforceWorkspace")}</span>
+          <span>{t("openCompanySettings")}</span>
         </div>
-        <ChevronDown size={16} />
+        <Settings size={16} aria-hidden="true" />
       </button>
-      <label className="page-switcher">
-        <span>{t("goTo")}</span>
-        <select
-          value={page}
-          onChange={(event) => onNavigate(event.target.value as Page)}
-          aria-label={t("goToWorkspace")}
-        >
-          {navGroups.map((group) => (
-            <optgroup key={group.label} label={t(group.label)}>
-              {group.items.map(({ label }) => (
-                <option key={label} value={label}>
-                  {t(label.toLowerCase())}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-          <optgroup label={t("configuration")}>
-            <option value="Settings">{t("settings")}</option>
-          </optgroup>
-        </select>
-        <ChevronDown size={15} aria-hidden="true" />
-      </label>
       <label className="search-box">
         <Search size={17} />
         <input
@@ -462,7 +430,7 @@ function Header({
           }}
           placeholder={t("searchPeople")}
         />
-        <kbd>⌘ K</kbd>
+        <kbd>{isMac ? "⌘ K" : "Ctrl K"}</kbd>
       </label>
       <div className="top-actions">
         <LanguageSwitcher compact />
@@ -847,6 +815,7 @@ function Overview({
   onAttendance,
   onSchedule,
   onLiveLocations,
+  onSetup,
 }: {
   dashboard: DashboardData;
   records: EmployeeRow[];
@@ -860,6 +829,7 @@ function Overview({
   onAttendance: () => void;
   onSchedule: () => void;
   onLiveLocations: () => void;
+  onSetup: (target: SetupTarget) => void;
 }) {
   const { t } = useI18n();
   const workingPercent =
@@ -899,6 +869,7 @@ function Overview({
           <button onClick={onRetry}>{t("tryAgain")}</button>
         </div>
       )}
+      <SetupChecklist onOpen={onSetup} />
       <section className="admin-start panel" aria-label={t("commonTasks")}>
         <div>
           <span>{t("startHere")}</span>
@@ -926,14 +897,14 @@ function Overview({
           </span>
         </button>
       </section>
-      <p>
-        {t("totalEmployees")}: {dashboard.activeEmployees}
-      </p>
       <section className="metrics-grid">
         <MetricCard
           label={t("currentlyWorking")}
           value={loading ? "—" : dashboard.workingToday.toString()}
-          note={t("activeEmployeePercent", { count: workingPercent })}
+          note={t("workingOfTotal", {
+            count: workingPercent,
+            total: dashboard.activeEmployees,
+          })}
           tone="mint"
           icon={UserRoundCheck}
           onClick={onAttendance}
@@ -963,7 +934,6 @@ function Overview({
           onClick={() => onReview(exceptions[0]?.id ?? 0)}
         />
       </section>
-      <WorkforceMetrics />
       <div className="dashboard-grid">
         <AttendanceChart data={dashboard.weeklyAttendance} />
         <Exceptions items={exceptions} onReview={onReview} />
@@ -973,6 +943,28 @@ function Overview({
         loading={loading}
         onViewAll={onAttendance}
       />
+    </div>
+  );
+}
+
+function ReportsPage() {
+  const { t } = useI18n();
+  return (
+    <div className="reports-page">
+      <div className="page-heading-row">
+        <div>
+          <p className="eyebrow">{t("workspace")}</p>
+          <h1>{t("reports")}</h1>
+          <p>{t("reportsDescription")}</p>
+        </div>
+      </div>
+      <PageGuide
+        id="reports"
+        steps={[t("guideReports1"), t("guideReports2"), t("guideReports3")]}
+      />
+      <WorkforceMetrics />
+      <WorkforceReport />
+      <AdvancedPage section="reports" />
     </div>
   );
 }
@@ -1015,6 +1007,7 @@ function WorkspaceApp({
   const [peopleEmployeeId, setPeopleEmployeeId] = useState<string>();
   const [liveEmployeeId, setLiveEmployeeId] = useState<string>();
   const [liveEmployeeName, setLiveEmployeeName] = useState("");
+  const [settingsSection, setSettingsSection] = useState<string>();
   const openEmployeeSchedule = (id?: string) => {
     setScheduleEmployeeId(id);
     setPage("Schedule");
@@ -1032,7 +1025,20 @@ function WorkspaceApp({
     setPeopleEmployeeId(undefined);
     setScheduleEmployeeId(undefined);
     setLiveEmployeeId(undefined);
+    setSettingsSection(undefined);
     setPage(next);
+  };
+  const openSetupStep = (target: SetupTarget) => {
+    if (target === "People") {
+      setPeopleAddRequest((current) => current + 1);
+      setPage("People");
+      return;
+    }
+    if (target === "Schedule") return navigate("Schedule");
+    navigate("Settings");
+    setSettingsSection(
+      target === "Devices" ? "settings-devices" : "settings-locations",
+    );
   };
 
   useEffect(() => {
@@ -1176,6 +1182,7 @@ function WorkspaceApp({
               }}
               onSchedule={() => navigate("Schedule")}
               onLiveLocations={() => navigate("LiveLocations")}
+              onSetup={openSetupStep}
             />
           )}
           {page === "Attendance" && (
@@ -1216,7 +1223,7 @@ function WorkspaceApp({
             <SchedulePage initialEmployeeId={scheduleEmployeeId} />
           )}
           {page === "Tasks" && <TasksPage />}
-          {page === "Reports" && <WorkforceReport />}
+          {page === "Reports" && <ReportsPage />}
           {page === "Leave" && <LeavePage />}
           {page === "People" && (
             <PeoplePage
@@ -1236,10 +1243,10 @@ function WorkspaceApp({
               }}
             />
           )}
-          {page === "Advanced" && <AdvancedPage />}
           {page === "Settings" && (
             <SettingsPage
               user={user}
+              focusSection={settingsSection}
               onCompanyUpdated={(name) =>
                 onUserChange({ ...user, company: { ...user.company, name } })
               }

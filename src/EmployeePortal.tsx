@@ -3,6 +3,7 @@ import {
   CalendarDays,
   Check,
   CircleDollarSign,
+  ClipboardList,
   Clock3,
   Coffee,
   FilePenLine,
@@ -13,6 +14,7 @@ import {
   Plus,
   RefreshCw,
   ShieldCheck,
+  Timer,
   X,
 } from "lucide-react";
 import { apiRequest, type SessionUser } from "./api";
@@ -948,46 +950,26 @@ export function EmployeePortal({
           </div>
         )}
         <nav className="portal-tabs">
-          <button
-            className={tab === "tasks" ? "active" : ""}
-            onClick={() => setTab("tasks")}
-          >
-            {t("tasks")}
-          </button>
-          <button
-            className={tab === "hours" ? "active" : ""}
-            onClick={() => setTab("hours")}
-          >
-            {t("myWorkHours")}
-          </button>
-          <button
-            className={tab === "home" ? "active" : ""}
-            onClick={() => setTab("home")}
-          >
-            <Clock3 size={17} />
-            {t("today")}
-          </button>
-          <button
-            className={tab === "schedule" ? "active" : ""}
-            onClick={() => setTab("schedule")}
-          >
-            <CalendarDays size={17} />
-            {t("schedule")}
-          </button>
-          <button
-            className={tab === "pay" ? "active" : ""}
-            onClick={() => setTab("pay")}
-          >
-            <CircleDollarSign size={17} />
-            {t("payslips")}
-          </button>
-          <button
-            className={tab === "requests" ? "active" : ""}
-            onClick={() => setTab("requests")}
-          >
-            <FilePenLine size={17} />
-            {t("requests")}
-          </button>
+          {(
+            [
+              ["home", Clock3, "today"],
+              ["schedule", CalendarDays, "schedule"],
+              ["requests", FilePenLine, "requests"],
+              ["tasks", ClipboardList, "tasks"],
+              ["hours", Timer, "myWorkHours"],
+              ["pay", CircleDollarSign, "payslips"],
+            ] as const
+          ).map(([name, Icon, key]) => (
+            <button
+              key={name}
+              className={tab === name ? "active" : ""}
+              aria-current={tab === name ? "page" : undefined}
+              onClick={() => setTab(name)}
+            >
+              <Icon size={17} />
+              {t(key)}
+            </button>
+          ))}
         </nav>
         {tab === "tasks" && <TasksPage employee />}
         {tab === "hours" && <WorkforceReport employee />}
