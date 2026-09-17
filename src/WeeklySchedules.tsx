@@ -8,6 +8,7 @@ import {
   ArrowRight,
   X,
   CheckCircle2,
+  MapPin,
 } from "lucide-react";
 import { apiRequest } from "./api";
 import { useI18n, intlLocale } from "./i18n";
@@ -26,6 +27,7 @@ export interface WeeklyRule {
   endsAt: string;
   unpaidBreakMinutes: number;
   graceMinutes: number;
+  liveTrackingEnabled?: boolean;
   effectiveFrom: string;
   effectiveUntil: string | null;
   active: boolean;
@@ -121,6 +123,7 @@ export function WeeklySchedules({ onChanged }: { onChanged: () => void }) {
             endsAt: "18:00",
             unpaidBreakMinutes: 0,
             graceMinutes: 5,
+            liveTrackingEnabled: false,
             effectiveFrom: tashkentDate(),
             effectiveUntil: null,
             active: true,
@@ -286,6 +289,12 @@ export function WeeklySchedules({ onChanged }: { onChanged: () => void }) {
             <p className="weekly-rule-note">
               {r.effectiveFrom} · {r.effectiveUntil ?? label("forever")}
             </p>
+            {r.liveTrackingEnabled && (
+              <span className="weekly-tracking-badge">
+                <MapPin size={13} aria-hidden="true" />
+                {label("trackingOn")}
+              </span>
+            )}
             {r.generatedUntil && r.active && r.autoPublish && (
               <small>
                 {label("generated")} {r.generatedUntil}
@@ -385,7 +394,9 @@ export function WeeklySchedules({ onChanged }: { onChanged: () => void }) {
                           }
                         >
                           <option value="ALL">{label("everyone")}</option>
-                          <option value="DEPARTMENT">{label("department")}</option>
+                          <option value="DEPARTMENT">
+                            {label("department")}
+                          </option>
                           <option value="LOCATION">{label("location")}</option>
                           <option value="EMPLOYEE">{label("employee")}</option>
                         </select>
@@ -472,6 +483,22 @@ export function WeeklySchedules({ onChanged }: { onChanged: () => void }) {
                         }
                       />
                     </label>
+                    <label className="form-check weekly-tracking">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(form.liveTrackingEnabled)}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            liveTrackingEnabled: e.target.checked,
+                          })
+                        }
+                      />
+                      <span>
+                        <strong>{label("tracking")}</strong>
+                        <small>{label("trackingHelp")}</small>
+                      </span>
+                    </label>
                     <details className="weekly-details">
                       <summary>{label("details")}</summary>
                       <div className="field-grid">
@@ -546,8 +573,9 @@ export function WeeklySchedules({ onChanged }: { onChanged: () => void }) {
                       <CalendarDays size={21} />
                       <div>
                         <strong>
-                          {label("preview")}: {form.weekdays.map(day).join(", ")} ·{" "}
-                          {form.startsAt}–{form.endsAt}
+                          {label("preview")}:{" "}
+                          {form.weekdays.map(day).join(", ")} · {form.startsAt}–
+                          {form.endsAt}
                         </strong>
                         <p>{label("exception")}</p>
                       </div>

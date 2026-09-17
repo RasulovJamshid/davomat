@@ -39,14 +39,12 @@ export function createApp() {
         timestamp: new Date().toISOString(),
       });
     } catch {
-      response
-        .status(503)
-        .json({
-          status: "unavailable",
-          service: "atlas-api",
-          database: "disconnected",
-          timestamp: new Date().toISOString(),
-        });
+      response.status(503).json({
+        status: "unavailable",
+        service: "atlas-api",
+        database: "disconnected",
+        timestamp: new Date().toISOString(),
+      });
     }
   });
   app.use("/api/device", deviceRouter);

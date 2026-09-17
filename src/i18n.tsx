@@ -2436,15 +2436,6 @@ Object.assign(ru, {
 });
 
 Object.assign(en, {
-  advanced: "Advanced",
-  administration: "Administration",
-  advancedOperations: "Advanced operations",
-  advancedOperationsDescription:
-    "Devices, compliance payroll, scheduling automation, and reporting.",
-  advanced_devices: "Devices",
-  advanced_payroll: "Payroll rules",
-  advanced_scheduling: "Scheduling",
-  advanced_reports: "Reports",
   loadAdvancedFailed: "Could not load advanced operations.",
   saveFailed: "Could not save changes.",
   registerDevice: "Register device",
@@ -2506,7 +2497,6 @@ Object.assign(en, {
   reportName: "Report name",
   reportType: "Report type",
   recipients: "Email recipients",
-  cronSchedule: "Cron schedule",
   nextRun: "Next run",
   scheduleReport: "Schedule report",
   reportSaved: "Report schedule saved.",
@@ -2533,15 +2523,6 @@ Object.assign(en, {
   loadRequestsFailed: "Could not load scheduling requests.",
 });
 Object.assign(uz, {
-  advanced: "Kengaytirilgan",
-  administration: "Boshqaruv",
-  advancedOperations: "Kengaytirilgan operatsiyalar",
-  advancedOperationsDescription:
-    "Qurilmalar, me’yoriy ish haqi, jadval avtomatikasi va hisobotlar.",
-  advanced_devices: "Qurilmalar",
-  advanced_payroll: "Ish haqi qoidalari",
-  advanced_scheduling: "Jadval",
-  advanced_reports: "Hisobotlar",
   loadAdvancedFailed: "Kengaytirilgan operatsiyalarni yuklab bo‘lmadi.",
   saveFailed: "O‘zgarishlarni saqlab bo‘lmadi.",
   registerDevice: "Qurilmani ro‘yxatdan o‘tkazish",
@@ -2604,7 +2585,6 @@ Object.assign(uz, {
   reportName: "Hisobot nomi",
   reportType: "Hisobot turi",
   recipients: "Email oluvchilar",
-  cronSchedule: "Cron jadvali",
   nextRun: "Keyingi ishga tushish",
   scheduleReport: "Hisobotni rejalashtirish",
   reportSaved: "Hisobot jadvali saqlandi.",
@@ -2633,15 +2613,6 @@ Object.assign(uz, {
   loadRequestsFailed: "Jadval so‘rovlarini yuklab bo‘lmadi.",
 });
 Object.assign(ru, {
-  advanced: "Расширенные",
-  administration: "Администрирование",
-  advancedOperations: "Расширенные операции",
-  advancedOperationsDescription:
-    "Устройства, расчет зарплаты, автоматизация графиков и отчеты.",
-  advanced_devices: "Устройства",
-  advanced_payroll: "Правила зарплаты",
-  advanced_scheduling: "Графики",
-  advanced_reports: "Отчеты",
   loadAdvancedFailed: "Не удалось загрузить расширенные операции.",
   saveFailed: "Не удалось сохранить изменения.",
   registerDevice: "Зарегистрировать устройство",
@@ -2704,7 +2675,6 @@ Object.assign(ru, {
   reportName: "Название отчета",
   reportType: "Тип отчета",
   recipients: "Получатели email",
-  cronSchedule: "Cron-расписание",
   nextRun: "Следующий запуск",
   scheduleReport: "Запланировать отчет",
   reportSaved: "Расписание отчета сохранено.",
@@ -2943,35 +2913,23 @@ Object.assign(ru, {
 Object.assign(en, {
   dailyWork: "Daily work",
   management: "Management",
-  configuration: "Configuration",
-  goTo: "Go to",
-  goToWorkspace: "Go to workspace",
   quickNavigation: "Quick navigation",
   more: "More",
   settingsSections: "Settings sections",
-  advancedSections: "Advanced operation sections",
 });
 Object.assign(uz, {
   dailyWork: "Kundalik ish",
   management: "Boshqaruv",
-  configuration: "Sozlash",
-  goTo: "Bo‘lim",
-  goToWorkspace: "Ish bo‘limiga o‘tish",
   quickNavigation: "Tezkor navigatsiya",
   more: "Boshqa",
   settingsSections: "Sozlamalar bo‘limlari",
-  advancedSections: "Kengaytirilgan boshqaruv bo‘limlari",
 });
 Object.assign(ru, {
   dailyWork: "Ежедневная работа",
   management: "Управление",
-  configuration: "Настройка",
-  goTo: "Перейти",
-  goToWorkspace: "Перейти в раздел",
   quickNavigation: "Быстрая навигация",
   more: "Ещё",
   settingsSections: "Разделы настроек",
-  advancedSections: "Разделы расширенного управления",
 });
 
 Object.assign(en, {
@@ -3171,10 +3129,6 @@ Object.assign(en, {
   people: "Employees",
   schedule: "Work schedule",
   leave: "Leave requests",
-  advanced: "Tools & reports",
-  advancedOperations: "Tools & reports",
-  advancedOperationsDescription:
-    "Create reports, configure pay and scheduling rules, or connect attendance devices.",
   dailyWork: "Time & attendance",
   management: "Team & pay",
   reviewIssuesCount: "Review {count} issues",
@@ -3193,10 +3147,6 @@ Object.assign(uz, {
   people: "Xodimlar",
   schedule: "Ish jadvali",
   leave: "Ta’til so‘rovlari",
-  advanced: "Vositalar va hisobotlar",
-  advancedOperations: "Vositalar va hisobotlar",
-  advancedOperationsDescription:
-    "Hisobot yarating, ish haqi va jadval qoidalarini sozlang yoki davomat qurilmalarini ulang.",
   dailyWork: "Vaqt va davomat",
   management: "Jamoa va ish haqi",
   reviewIssuesCount: "{count} ta muammoni ko‘rish",
@@ -3215,10 +3165,6 @@ Object.assign(ru, {
   people: "Сотрудники",
   schedule: "Рабочий график",
   leave: "Заявки на отпуск",
-  advanced: "Инструменты и отчёты",
-  advancedOperations: "Инструменты и отчёты",
-  advancedOperationsDescription:
-    "Создавайте отчёты, настраивайте оплату и графики или подключайте устройства учёта.",
   dailyWork: "Время и посещаемость",
   management: "Команда и зарплата",
   reviewIssuesCount: "Проверить проблемы: {count}",
@@ -3653,4 +3599,252 @@ Object.assign(ru, {
   formContact: "Контакты",
   formJobPay: "Должность и оплата",
   calendarView: "Календарь (разовые изменения)",
+});
+
+// Confirm dialogs, empty states, notifications, filters.
+Object.assign(en, {
+  confirmTitle: "Please confirm",
+  confirmAction: "Confirm",
+  editProfile: "Edit profile",
+  noTasksHint: "Create a task above and assign it to an employee.",
+  noTasksEmployee: "Nothing has been assigned to you yet.",
+  absentOnly: "Absent",
+  lateOnly: "Late",
+  welcomeBackTo: "Welcome back to {company}",
+  signInToContinue: "Sign in to continue where you left off.",
+});
+Object.assign(uz, {
+  confirmTitle: "Tasdiqlang",
+  confirmAction: "Tasdiqlash",
+  editProfile: "Profilni tahrirlash",
+  noTasksHint: "Yuqorida vazifa yarating va xodimga biriktiring.",
+  noTasksEmployee: "Sizga hali vazifa biriktirilmagan.",
+  absentOnly: "Kelmaganlar",
+  lateOnly: "Kechikkanlar",
+  welcomeBackTo: "{company} ga xush kelibsiz",
+  signInToContinue: "Davom etish uchun tizimga kiring.",
+});
+Object.assign(ru, {
+  confirmTitle: "Подтвердите действие",
+  confirmAction: "Подтвердить",
+  editProfile: "Редактировать профиль",
+  noTasksHint: "Создайте задачу выше и назначьте её сотруднику.",
+  noTasksEmployee: "Вам пока ничего не назначено.",
+  absentOnly: "Отсутствуют",
+  lateOnly: "Опоздали",
+  welcomeBackTo: "С возвращением в {company}",
+  signInToContinue: "Войдите, чтобы продолжить.",
+});
+
+// Focus areas: live location history, task board, per-employee attendance.
+Object.assign(en, {
+  assignTask: "Assign a task",
+  assignTaskHelp: "Give someone a job with a deadline",
+  liveTrackingNotOnSchedule:
+    "No weekly schedule has live tracking turned on. Open Schedule, edit the weekly schedule and switch on live location.",
+  byLocation: "By location",
+  reasonNoDevice:
+    "No phone linked. The employee has not signed in to the mobile app yet.",
+  reasonDeviceSilent:
+    "Phone linked but not reporting. Location permission may be off, or the app was closed.",
+  reasonAppBackground:
+    "Last contact {time}. Background updates may be paused by the phone's battery saver.",
+  reasonJustStarted:
+    "Shift just started. The first point usually arrives within a minute.",
+  viewRoute: "View route",
+  hideRoute: "Hide route",
+  routeTitle: "Route for {employee}",
+  routePoints: "{count} points recorded",
+  routeEmpty: "No points recorded for this shift yet.",
+  routeScrub: "Move the slider to see where the employee was at a given time.",
+  routeAt: "At {time}",
+  routeRetention: "Routes are kept for 7 days, then deleted.",
+  taskBoard: "Task board",
+  taskLaneOverdue: "Overdue",
+  taskLaneNEW: "New",
+  taskLaneIN_PROGRESS: "In progress",
+  taskLaneDONE: "Completed",
+  taskFilterEmployee: "Employee",
+  allEmployees: "All employees",
+  taskLocation: "Location",
+  noLocation: "No location",
+  taskDueIn: "Due {time}",
+  taskOverdueBy: "Overdue since {time}",
+  completionNote: "Completion note",
+  completionNotePlaceholder: "What was done, anything the manager should know",
+  managerNote: "Manager comment",
+  managerNotePlaceholder: "Optional comment for the employee",
+  confirmComplete: "Mark completed",
+  showCompleted: "Show completed ({count})",
+  hideCompleted: "Hide completed",
+  todaysTasks: "Today's tasks",
+  todaysTasksHint: "Due today or overdue",
+  noTasksToday: "Nothing due today.",
+  openAllTasks: "All tasks",
+  byEmployee: "By employee",
+  chooseEmployee: "Choose an employee",
+  weekOf: "Week of {date}",
+  previousWeek: "Previous week",
+  nextWeek: "Next week",
+  thisWeek: "This week",
+  statusUPCOMING: "Upcoming",
+  faceVerified: "Face verified",
+  noFaceCheck: "No face check",
+  workedShort: "Worked",
+  lateThisMonth: "Late arrivals this month",
+  lateThisMonthHint:
+    "Employees with the most late days and absences since the 1st.",
+  lateDaysCount: "{count} late",
+  absentDaysCount: "{count} absent",
+  noLatenessThisMonth: "Nobody has been late this month.",
+  evidence: "Evidence",
+});
+Object.assign(uz, {
+  assignTask: "Vazifa biriktirish",
+  assignTaskHelp: "Kimgadir muddatli vazifa bering",
+  liveTrackingNotOnSchedule:
+    "Hech bir haftalik jadvalda jonli kuzatuv yoqilmagan. Jadvalni oching, haftalik jadvalni tahrirlang va jonli joylashuvni yoqing.",
+  byLocation: "Joy bo‘yicha",
+  reasonNoDevice: "Telefon ulanmagan. Xodim hali mobil ilovaga kirmagan.",
+  reasonDeviceSilent:
+    "Telefon ulangan, lekin ma’lumot kelmayapti. Joylashuv ruxsati o‘chiq yoki ilova yopilgan bo‘lishi mumkin.",
+  reasonAppBackground:
+    "Oxirgi aloqa {time}. Telefonning batareya tejash rejimi fon yangilanishlarini to‘xtatgan bo‘lishi mumkin.",
+  reasonJustStarted:
+    "Smena endi boshlandi. Birinchi nuqta odatda bir daqiqada keladi.",
+  viewRoute: "Marshrutni ko‘rish",
+  hideRoute: "Marshrutni yashirish",
+  routeTitle: "{employee} marshruti",
+  routePoints: "{count} ta nuqta yozilgan",
+  routeEmpty: "Bu smena uchun hali nuqta yozilmagan.",
+  routeScrub:
+    "Xodim ma’lum vaqtda qayerda bo‘lganini ko‘rish uchun slayderni suring.",
+  routeAt: "{time} da",
+  routeRetention: "Marshrutlar 7 kun saqlanadi, so‘ng o‘chiriladi.",
+  taskBoard: "Vazifalar doskasi",
+  taskLaneOverdue: "Muddati o‘tgan",
+  taskLaneNEW: "Yangi",
+  taskLaneIN_PROGRESS: "Bajarilmoqda",
+  taskLaneDONE: "Bajarilgan",
+  taskFilterEmployee: "Xodim",
+  allEmployees: "Barcha xodimlar",
+  taskLocation: "Joy",
+  noLocation: "Joy yo‘q",
+  taskDueIn: "Muddat: {time}",
+  taskOverdueBy: "{time} dan beri kechikkan",
+  completionNote: "Bajarilganlik izohi",
+  completionNotePlaceholder:
+    "Nima qilindi, menejer bilishi kerak bo‘lgan narsa",
+  managerNote: "Menejer izohi",
+  managerNotePlaceholder: "Xodim uchun ixtiyoriy izoh",
+  confirmComplete: "Bajarildi deb belgilash",
+  showCompleted: "Bajarilganlarni ko‘rsatish ({count})",
+  hideCompleted: "Bajarilganlarni yashirish",
+  todaysTasks: "Bugungi vazifalar",
+  todaysTasksHint: "Bugun muddati tugaydigan yoki kechikkan",
+  noTasksToday: "Bugun muddati tugaydigan vazifa yo‘q.",
+  openAllTasks: "Barcha vazifalar",
+  byEmployee: "Xodim bo‘yicha",
+  chooseEmployee: "Xodimni tanlang",
+  weekOf: "{date} haftasi",
+  previousWeek: "Oldingi hafta",
+  nextWeek: "Keyingi hafta",
+  thisWeek: "Shu hafta",
+  statusUPCOMING: "Kutilmoqda",
+  faceVerified: "Yuz tasdiqlangan",
+  noFaceCheck: "Yuz tekshiruvi yo‘q",
+  workedShort: "Ishlangan",
+  lateThisMonth: "Shu oy kechikishlar",
+  lateThisMonthHint: "1-sanadan beri eng ko‘p kechikkan va kelmagan xodimlar.",
+  lateDaysCount: "{count} kechikish",
+  absentDaysCount: "{count} kelmagan",
+  noLatenessThisMonth: "Shu oy hech kim kechikmagan.",
+  evidence: "Dalil",
+});
+Object.assign(ru, {
+  assignTask: "Назначить задачу",
+  assignTaskHelp: "Поручите работу со сроком",
+  liveTrackingNotOnSchedule:
+    "Ни в одном недельном графике не включено отслеживание. Откройте «График», измените недельный график и включите геолокацию.",
+  byLocation: "По локации",
+  reasonNoDevice:
+    "Телефон не привязан. Сотрудник ещё не входил в мобильное приложение.",
+  reasonDeviceSilent:
+    "Телефон привязан, но данных нет. Возможно, выключено разрешение на геолокацию или приложение закрыто.",
+  reasonAppBackground:
+    "Последний контакт {time}. Фоновые обновления могла остановить экономия батареи.",
+  reasonJustStarted:
+    "Смена только началась. Первая точка обычно приходит в течение минуты.",
+  viewRoute: "Показать маршрут",
+  hideRoute: "Скрыть маршрут",
+  routeTitle: "Маршрут: {employee}",
+  routePoints: "Записано точек: {count}",
+  routeEmpty: "Для этой смены точек пока нет.",
+  routeScrub:
+    "Двигайте ползунок, чтобы увидеть, где был сотрудник в нужное время.",
+  routeAt: "В {time}",
+  routeRetention: "Маршруты хранятся 7 дней, затем удаляются.",
+  taskBoard: "Доска задач",
+  taskLaneOverdue: "Просрочено",
+  taskLaneNEW: "Новые",
+  taskLaneIN_PROGRESS: "В работе",
+  taskLaneDONE: "Выполнено",
+  taskFilterEmployee: "Сотрудник",
+  allEmployees: "Все сотрудники",
+  taskLocation: "Локация",
+  noLocation: "Без локации",
+  taskDueIn: "Срок: {time}",
+  taskOverdueBy: "Просрочено с {time}",
+  completionNote: "Отметка о выполнении",
+  completionNotePlaceholder: "Что сделано и что важно знать руководителю",
+  managerNote: "Комментарий руководителя",
+  managerNotePlaceholder: "Необязательный комментарий для сотрудника",
+  confirmComplete: "Отметить выполненной",
+  showCompleted: "Показать выполненные ({count})",
+  hideCompleted: "Скрыть выполненные",
+  todaysTasks: "Задачи на сегодня",
+  todaysTasksHint: "Срок сегодня или просрочены",
+  noTasksToday: "На сегодня задач нет.",
+  openAllTasks: "Все задачи",
+  byEmployee: "По сотруднику",
+  chooseEmployee: "Выберите сотрудника",
+  weekOf: "Неделя с {date}",
+  previousWeek: "Предыдущая неделя",
+  nextWeek: "Следующая неделя",
+  thisWeek: "Эта неделя",
+  statusUPCOMING: "Предстоит",
+  faceVerified: "Лицо подтверждено",
+  noFaceCheck: "Без проверки лица",
+  workedShort: "Отработано",
+  lateThisMonth: "Опоздания в этом месяце",
+  lateThisMonthHint:
+    "Сотрудники с наибольшим числом опозданий и отсутствий с 1-го числа.",
+  lateDaysCount: "Опозданий: {count}",
+  absentDaysCount: "Отсутствий: {count}",
+  noLatenessThisMonth: "В этом месяце никто не опаздывал.",
+  evidence: "Подтверждение",
+});
+
+Object.assign(en, {
+  guideTasks1:
+    "Create a task with a deadline and, if useful, the location where it happens.",
+  guideTasks2:
+    "Overdue work rises to the top. Employees start and complete tasks from their phone or the web portal.",
+  guideTasks3:
+    "Completion notes and your comments stay on the task for the record.",
+});
+Object.assign(uz, {
+  guideTasks1:
+    "Muddatli vazifa yarating, kerak bo‘lsa bajariladigan joyni ko‘rsating.",
+  guideTasks2:
+    "Muddati o‘tgan ishlar yuqoriga chiqadi. Xodimlar vazifani telefon yoki portaldan boshlaydi va yakunlaydi.",
+  guideTasks3:
+    "Bajarilganlik izohlari va sizning izohlaringiz vazifada saqlanadi.",
+});
+Object.assign(ru, {
+  guideTasks1:
+    "Создайте задачу со сроком и, если нужно, локацией, где она выполняется.",
+  guideTasks2:
+    "Просроченные задачи поднимаются наверх. Сотрудники начинают и завершают задачи с телефона или из портала.",
+  guideTasks3: "Отметки о выполнении и ваши комментарии остаются в задаче.",
 });

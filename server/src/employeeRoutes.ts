@@ -107,17 +107,15 @@ employeeRouter.post(
         company: company.rows[0]?.name ?? "Atlas",
         temporaryPassword: input.temporaryPassword,
       });
-      response
-        .status(201)
-        .json({
-          data: {
-            employeeId,
-            userId,
-            email: input.email.toLowerCase(),
-            active: true,
-            invitation: delivery,
-          },
-        });
+      response.status(201).json({
+        data: {
+          employeeId,
+          userId,
+          email: input.email.toLowerCase(),
+          active: true,
+          invitation: delivery,
+        },
+      });
     } catch (error) {
       await client.query("ROLLBACK");
       if ((error as { code?: string }).code === "23505")
@@ -158,6 +156,7 @@ employeeRouter.get(
       corrections,
       leaves,
       leaveBalance,
+      tasks,
     ] = await Promise.all([
       pool.query(
         `SELECT e.id,e.employee_number AS "employeeNumber",e.full_name AS name,e.job_title AS "jobTitle",e.status,
@@ -203,6 +202,15 @@ employeeRouter.get(
        FROM companies c LEFT JOIN leave_requests l ON l.company_id=c.id AND l.employee_id=$2 AND l.leave_type='ANNUAL' AND l.status='APPROVED' AND extract(year FROM l.starts_on)=extract(year FROM CURRENT_DATE) WHERE c.id=$1 GROUP BY c.annual_leave_days`,
         [companyId, employeeId],
       ),
+      // Open tasks due by the end of the employee's local day, overdue first.
+      pool.query(
+        `SELECT t.id,t.title,t.due_at AS "dueAt",t.priority,t.status,l.name AS location
+       FROM employee_tasks t JOIN companies c ON c.id=t.company_id LEFT JOIN locations l ON l.id=t.location_id
+       WHERE t.company_id=$1 AND t.employee_id=$2 AND t.status<>'DONE'
+         AND t.due_at < ((now() AT TIME ZONE c.timezone)::date+1) AT TIME ZONE c.timezone
+       ORDER BY t.due_at LIMIT 20`,
+        [companyId, employeeId],
+      ),
     ]);
     response.json({
       data: {
@@ -213,6 +221,7 @@ employeeRouter.get(
         corrections: corrections.rows,
         leaves: leaves.rows,
         leaveBalance: leaveBalance.rows[0],
+        tasks: tasks.rows,
       },
     });
   }),
@@ -379,11 +388,9 @@ employeeRouter.post(
         [companyId, sub, punch.rows[0].id, JSON.stringify(punch.rows[0])],
       );
       await client.query("COMMIT");
-      response
-        .status(201)
-        .json({
-          data: { ...punch.rows[0], location: location?.rows[0]?.name ?? null },
-        });
+      response.status(201).json({
+        data: { ...punch.rows[0], location: location?.rows[0]?.name ?? null },
+      });
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
@@ -427,7 +434,10 @@ employeeRouter.post(
         [companyId, employee.rows[0].id, input.capturedAt],
       );
       if (!shift.rows[0])
-        throw new HttpError(403, "Live location is not enabled for an active shift");
+        throw new HttpError(
+          403,
+          "Live location is not enabled for an active shift",
+        );
       const bindingId = await bindOrVerifyMobileDevice(client, {
         companyId,
         userId: sub,
@@ -452,6 +462,23 @@ employeeRouter.post(
           input.capturedAt,
         ],
       );
+      // Route history for the shift; pruned after seven days.
+      await client.query(
+        `INSERT INTO live_location_points(shift_id,company_id,employee_id,latitude,longitude,accuracy_m,captured_at) VALUES($1,$2,$3,$4,$5,$6,$7)`,
+        [
+          shift.rows[0].id,
+          companyId,
+          employee.rows[0].id,
+          input.latitude,
+          input.longitude,
+          input.accuracyM,
+          input.capturedAt,
+        ],
+      );
+      await client.query(
+        `DELETE FROM live_location_points WHERE company_id=$1 AND captured_at<now()-interval '7 days'`,
+        [companyId],
+      );
       await client.query("COMMIT");
       response.json({
         data: { accepted: true, activeUntil: shift.rows[0].ends_at },
@@ -475,14 +502,40 @@ employeeRouter.get(
       [companyId],
     );
     const result = await pool.query(
-      `SELECT s.id AS "shiftId",e.id AS "employeeId",e.full_name AS employee,e.job_title AS "jobTitle",s.starts_at AS "startsAt",s.ends_at AS "endsAt",l.name AS "scheduledLocation",u.latitude::float8 AS latitude,u.longitude::float8 AS longitude,u.accuracy_m::float8 AS "accuracyM",u.captured_at AS "capturedAt",u.received_at AS "receivedAt"
+      `SELECT s.id AS "shiftId",e.id AS "employeeId",e.full_name AS employee,e.job_title AS "jobTitle",s.starts_at AS "startsAt",s.ends_at AS "endsAt",l.name AS "scheduledLocation",u.latitude::float8 AS latitude,u.longitude::float8 AS longitude,u.accuracy_m::float8 AS "accuracyM",u.captured_at AS "capturedAt",u.received_at AS "receivedAt",
+              b.id IS NOT NULL AS "deviceLinked",b.last_seen_at AS "deviceLastSeenAt",
+              (SELECT count(*) FROM live_location_points p WHERE p.shift_id=s.id)::int AS "pointCount"
        FROM shifts s JOIN employees e ON e.id=s.employee_id LEFT JOIN locations l ON l.id=s.location_id LEFT JOIN live_location_updates u ON u.shift_id=s.id
+       LEFT JOIN LATERAL (SELECT id,last_seen_at FROM mobile_device_bindings mb WHERE mb.employee_id=e.id AND mb.revoked_at IS NULL ORDER BY mb.last_seen_at DESC NULLS LAST LIMIT 1) b ON true
        WHERE s.company_id=$1 AND s.status='PUBLISHED' AND s.live_tracking_enabled=true AND now() BETWEEN s.starts_at AND s.ends_at
-       ORDER BY e.full_name`,
+       ORDER BY l.name NULLS LAST,e.full_name`,
       [companyId],
     );
     response.setHeader("Cache-Control", "private, no-store");
     response.json({ data: result.rows });
+  }),
+);
+
+employeeRouter.get(
+  "/live-locations/:shiftId/history",
+  requireManager,
+  asyncHandler(async (request, response) => {
+    const shiftId = z.string().uuid().parse(request.params.shiftId);
+    const { companyId } = (request as AuthRequest).auth;
+    const shift = await pool.query(
+      `SELECT s.id AS "shiftId",e.id AS "employeeId",e.full_name AS employee,s.starts_at AS "startsAt",s.ends_at AS "endsAt",l.name AS "scheduledLocation",l.latitude::float8 AS "locationLatitude",l.longitude::float8 AS "locationLongitude",l.geofence_radius_m::float8 AS "geofenceRadiusM"
+       FROM shifts s JOIN employees e ON e.id=s.employee_id LEFT JOIN locations l ON l.id=s.location_id
+       WHERE s.id=$1 AND s.company_id=$2 AND s.live_tracking_enabled=true`,
+      [shiftId, companyId],
+    );
+    if (!shift.rows[0]) throw new HttpError(404, "Tracked shift not found");
+    const points = await pool.query(
+      `SELECT latitude::float8 AS latitude,longitude::float8 AS longitude,accuracy_m::float8 AS "accuracyM",captured_at AS "capturedAt"
+       FROM live_location_points WHERE shift_id=$1 AND company_id=$2 ORDER BY captured_at LIMIT 5000`,
+      [shiftId, companyId],
+    );
+    response.setHeader("Cache-Control", "private, no-store");
+    response.json({ data: { ...shift.rows[0], points: points.rows } });
   }),
 );
 

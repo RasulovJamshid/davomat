@@ -4,7 +4,7 @@ export interface SessionUser {
   displayName: string;
   role: "ADMIN" | "MANAGER" | "EMPLOYEE";
   mustChangePassword?: boolean;
-  company: { id: string; name: string };
+  company: { id: string; name: string; timezone?: string };
 }
 
 export interface LoginResponse {
@@ -157,6 +157,7 @@ export async function getCurrentUser(): Promise<SessionUser> {
     mustChangePassword: boolean;
     companyId: string;
     companyName: string;
+    timezone?: string;
   }>("/auth/me");
   return {
     id: result.id,
@@ -164,6 +165,10 @@ export async function getCurrentUser(): Promise<SessionUser> {
     displayName: result.displayName,
     role: result.role,
     mustChangePassword: result.mustChangePassword,
-    company: { id: result.companyId, name: result.companyName },
+    company: {
+      id: result.companyId,
+      name: result.companyName,
+      timezone: result.timezone,
+    },
   };
 }

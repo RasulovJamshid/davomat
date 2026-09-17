@@ -182,10 +182,65 @@ export interface LiveLocation {
   accuracyM: number | null;
   capturedAt: string | null;
   receivedAt: string | null;
+  deviceLinked?: boolean;
+  deviceLastSeenAt?: string | null;
+  pointCount?: number;
 }
 
 export const fetchLiveLocations = () =>
   apiRequest<LiveLocation[]>("/live-locations");
+export interface LiveLocationPoint {
+  latitude: number;
+  longitude: number;
+  accuracyM: number;
+  capturedAt: string;
+}
+export interface LiveLocationHistory {
+  shiftId: string;
+  employeeId: string;
+  employee: string;
+  startsAt: string;
+  endsAt: string;
+  scheduledLocation: string | null;
+  locationLatitude: number | null;
+  locationLongitude: number | null;
+  geofenceRadiusM: number | null;
+  points: LiveLocationPoint[];
+}
+export const fetchLiveLocationHistory = (shiftId: string) =>
+  apiRequest<LiveLocationHistory>(`/live-locations/${shiftId}/history`);
+
+export interface EmployeeAttendanceDay {
+  date: string;
+  shiftId: string | null;
+  shiftStart: string | null;
+  shiftEnd: string | null;
+  location: string | null;
+  clockIn: string | null;
+  clockInSource: string | null;
+  clockInWithinGeofence: boolean | null;
+  clockInFaceVerified: boolean;
+  clockOut: string | null;
+  clockOutWithinGeofence: boolean | null;
+  status:
+    | "ON_LEAVE"
+    | "UNSCHEDULED"
+    | "UPCOMING"
+    | "ABSENT"
+    | "OUTSIDE_GEOFENCE"
+    | "LATE"
+    | "ON_SHIFT"
+    | "ON_TIME";
+  workedMinutes: number | null;
+}
+export const fetchEmployeeAttendance = (
+  employeeId: string,
+  from: string,
+  to: string,
+) =>
+  apiRequest<EmployeeAttendanceDay[]>(
+    `/employees/${employeeId}/attendance?from=${from}&to=${to}`,
+  );
 
 export const fetchPayroll = () => apiRequest<ApiPayslip[]>("/payroll");
 export const addPayrollAdjustment = (

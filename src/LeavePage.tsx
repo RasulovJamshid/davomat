@@ -13,7 +13,7 @@ import {
 import { fetchLeaves, resolveLeave, type ApiLeave } from "./workforceApi";
 import { intlLocale, useI18n } from "./i18n";
 import { AdvancedPage } from "./AdvancedPage";
-import { PageGuide } from "./Guidance";
+import { PageGuide, Toast } from "./Guidance";
 
 const leaveKeys = {
   ANNUAL: "annualLeave",
@@ -200,7 +200,7 @@ export function LeavePage() {
   const resolved = async () => {
     await load();
     setToast(t("leaveDecisionSaved"));
-    window.setTimeout(() => setToast(""), 2500);
+    window.setTimeout(() => setToast(""), 5000);
   };
   return (
     <div className="leave-page">
@@ -303,10 +303,7 @@ export function LeavePage() {
         </div>
       </section>
       <AdvancedPage section="swaps" />
-      <div className={`toast ${toast ? "visible" : ""}`}>
-        <Check size={17} />
-        {toast}
-      </div>
+      <Toast message={toast || null} onDismiss={() => setToast("")} />
     </div>
   );
 }

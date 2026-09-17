@@ -249,7 +249,7 @@ test("employee edits stay open after saving and device load errors can be retrie
   await page.locator(".people-table tbody tr.clickable-row").first().click();
   await page
     .locator(".employee-section-nav")
-    .getByRole("button", { name: "Employment details", exact: true })
+    .getByRole("button", { name: "Edit profile", exact: true })
     .click();
   await page.getByLabel("Full name", { exact: true }).fill("Aziza Updated");
   await page.getByRole("button", { name: "Save employee changes" }).click();

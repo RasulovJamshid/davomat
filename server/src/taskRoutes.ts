@@ -65,6 +65,7 @@ export const taskSchema = z.object({
   employeeId: z.string().uuid(),
   dueAt: z.string().datetime({ offset: true }),
   priority: z.enum(["LOW", "NORMAL", "HIGH"]).default("NORMAL"),
+  locationId: z.string().uuid().nullable().default(null),
 });
 export function canTransitionTask(
   previous: string,
@@ -87,8 +88,8 @@ taskRouter.get(
       .optional()
       .parse(request.query.employeeId);
     const result = await pool.query(
-      `SELECT t.id,t.employee_id AS "employeeId",e.full_name AS employee,t.title,t.description,t.due_at AS "dueAt",t.priority,t.status,t.completed_at AS "completedAt"
-    FROM employee_tasks t JOIN employees e ON e.id=t.employee_id
+      `SELECT t.id,t.employee_id AS "employeeId",e.full_name AS employee,t.title,t.description,t.due_at AS "dueAt",t.priority,t.status,t.completed_at AS "completedAt",t.location_id AS "locationId",l.name AS location,t.completion_note AS "completionNote",t.manager_note AS "managerNote"
+    FROM employee_tasks t JOIN employees e ON e.id=t.employee_id LEFT JOIN locations l ON l.id=t.location_id
     WHERE t.company_id=$1 AND ($2::boolean OR e.user_id=$3) AND ($4::uuid IS NULL OR e.id=$4)
     ORDER BY CASE t.status WHEN 'DONE' THEN 1 ELSE 0 END,t.due_at,t.created_at DESC`,
       [companyId, role !== "EMPLOYEE", sub, employeeId ?? null],
@@ -103,8 +104,8 @@ taskRouter.post(
     const input = taskSchema.parse(request.body);
     const { companyId, sub } = (request as AuthRequest).auth;
     const result = await pool.query(
-      `INSERT INTO employee_tasks(company_id,employee_id,title,description,due_at,priority,created_by)
-    SELECT $1,e.id,$3,$4,$5,$6,$7 FROM employees e WHERE e.id=$2 AND e.company_id=$1 AND e.status IN ('ACTIVE','ON_LEAVE') RETURNING id`,
+      `INSERT INTO employee_tasks(company_id,employee_id,title,description,due_at,priority,created_by,location_id)
+    SELECT $1,e.id,$3,$4,$5,$6,$7,(SELECT id FROM locations WHERE id=$8 AND company_id=$1) FROM employees e WHERE e.id=$2 AND e.company_id=$1 AND e.status IN ('ACTIVE','ON_LEAVE') RETURNING id`,
       [
         companyId,
         input.employeeId,
@@ -113,6 +114,7 @@ taskRouter.post(
         input.dueAt,
         input.priority,
         sub,
+        input.locationId,
       ],
     );
     if (!result.rows[0]) throw new HttpError(404, "Employee not found");
@@ -123,8 +125,12 @@ taskRouter.patch(
   "/tasks/:id/status",
   asyncHandler(async (request, response) => {
     const id = z.string().uuid().parse(request.params.id);
-    const { status } = z
-      .object({ status: z.enum(["NEW", "IN_PROGRESS", "DONE"]) })
+    // `note` is the employee's completion note, or the manager's comment.
+    const { status, note } = z
+      .object({
+        status: z.enum(["NEW", "IN_PROGRESS", "DONE"]),
+        note: z.string().trim().max(2000).optional(),
+      })
       .strict()
       .parse(request.body);
     const { companyId, sub, role } = (request as AuthRequest).auth;
@@ -141,9 +147,11 @@ taskRouter.patch(
         !canTransitionTask(result.rows[0].status, status, role !== "EMPLOYEE")
       )
         throw new HttpError(409, "Invalid task status transition");
+      const noteColumn =
+        role === "EMPLOYEE" ? "completion_note" : "manager_note";
       await client.query(
-        `UPDATE employee_tasks SET status=$2,completed_at=CASE WHEN $2='DONE' THEN COALESCE(completed_at,now()) ELSE NULL END,updated_at=now() WHERE id=$1`,
-        [id, status],
+        `UPDATE employee_tasks SET status=$2,completed_at=CASE WHEN $2='DONE' THEN COALESCE(completed_at,now()) ELSE NULL END,${noteColumn}=COALESCE($3,${noteColumn}),updated_at=now() WHERE id=$1`,
+        [id, status, note ?? null],
       );
       await client.query(
         `INSERT INTO audit_logs(company_id,actor_user_id,action,entity_type,entity_id,previous_value,next_value) VALUES($1,$2,'TASK_STATUS_CHANGED','TASK',$3,$4,$5)`,
@@ -152,7 +160,7 @@ taskRouter.patch(
           sub,
           id,
           JSON.stringify(result.rows[0]),
-          JSON.stringify({ status }),
+          JSON.stringify({ status, note: note ?? null }),
         ],
       );
       await client.query("COMMIT");

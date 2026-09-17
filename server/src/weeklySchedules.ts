@@ -22,6 +22,7 @@ export const weeklyRuleSchema = z
     endsAt: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
     unpaidBreakMinutes: z.number().int().min(0).max(600).default(0),
     graceMinutes: z.number().int().min(0).max(120).default(5),
+    liveTrackingEnabled: z.boolean().default(false),
     effectiveFrom: z.string().date(),
     effectiveUntil: z.string().date().nullable().default(null),
     active: z.boolean().default(true),
@@ -41,7 +42,7 @@ export const weeklyRuleSchema = z
         message: "Workday must be longer than its unpaid break",
       });
   });
-const columns = `r.id,r.name,r.scope,r.scope_id AS "scopeId",r.employee_id AS "employeeId",r.location_id AS "locationId",r.weekdays,to_char(r.starts_at,'HH24:MI') AS "startsAt",to_char(r.ends_at,'HH24:MI') AS "endsAt",r.unpaid_break_minutes AS "unpaidBreakMinutes",r.grace_minutes AS "graceMinutes",r.effective_from::text AS "effectiveFrom",r.effective_until::text AS "effectiveUntil",r.active,r.auto_publish AS "autoPublish",r.generated_until::text AS "generatedUntil"`;
+const columns = `r.id,r.name,r.scope,r.scope_id AS "scopeId",r.employee_id AS "employeeId",r.location_id AS "locationId",r.weekdays,to_char(r.starts_at,'HH24:MI') AS "startsAt",to_char(r.ends_at,'HH24:MI') AS "endsAt",r.unpaid_break_minutes AS "unpaidBreakMinutes",r.grace_minutes AS "graceMinutes",r.live_tracking_enabled AS "liveTrackingEnabled",r.effective_from::text AS "effectiveFrom",r.effective_until::text AS "effectiveUntil",r.active,r.auto_publish AS "autoPublish",r.generated_until::text AS "generatedUntil"`;
 export const weeklyRouter = Router();
 weeklyRouter.use(
   ["/work-schedules", "/schedule-templates", "/recurring-schedules"],
@@ -108,7 +109,7 @@ export async function materializeWeekly(
   const candidates = (
     await c.query(
       `WITH matched AS (
- SELECT e.id AS employee,r.id AS rule,r.location_id,e.primary_location_id,r.starts_at,r.ends_at,r.unpaid_break_minutes,r.grace_minutes,r.created_by,r.auto_publish,r.weekdays,d::date AS day,
+ SELECT e.id AS employee,r.id AS rule,r.location_id,e.primary_location_id,r.starts_at,r.ends_at,r.unpaid_break_minutes,r.grace_minutes,r.live_tracking_enabled,r.created_by,r.auto_publish,r.weekdays,d::date AS day,
  row_number() OVER(PARTITION BY e.id,d ORDER BY CASE r.scope WHEN 'EMPLOYEE' THEN 3 WHEN 'ALL' THEN 1 ELSE 2 END DESC,r.updated_at DESC,r.id) AS rank
  FROM employees e JOIN recurring_schedules r ON r.company_id=e.company_id AND (r.scope='ALL' OR (r.scope='EMPLOYEE' AND r.scope_id=e.id) OR (r.scope='DEPARTMENT' AND r.scope_id=e.department_id) OR (r.scope='LOCATION' AND r.scope_id=e.primary_location_id))
  CROSS JOIN generate_series($2::date,$3::date,interval '1 day') d
@@ -140,7 +141,8 @@ export async function materializeWeekly(
         +s.ends_at !== +r.finish ||
         s.location_id !== (r.location_id ?? r.primary_location_id) ||
         s.unpaid_break_minutes !== r.unpaid_break_minutes ||
-        s.grace_minutes !== r.grace_minutes
+        s.grace_minutes !== r.grace_minutes ||
+        s.live_tracking_enabled !== r.live_tracking_enabled
       ) {
         await c.query(
           "UPDATE shifts SET status='CANCELLED',updated_at=now() WHERE id=$1",
@@ -179,7 +181,7 @@ export async function materializeWeekly(
     await c.query("SAVEPOINT new_shift");
     try {
       await c.query(
-        `INSERT INTO shifts(company_id,employee_id,location_id,starts_at,ends_at,unpaid_break_minutes,grace_minutes,status,created_by,recurring_rule_id,recurring_date) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+        `INSERT INTO shifts(company_id,employee_id,location_id,starts_at,ends_at,unpaid_break_minutes,grace_minutes,status,created_by,recurring_rule_id,recurring_date,live_tracking_enabled) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
         [
           company,
           r.employee,
@@ -192,6 +194,7 @@ export async function materializeWeekly(
           r.created_by,
           r.rule,
           r.localDate,
+          r.live_tracking_enabled,
         ],
       );
       created++;
@@ -309,14 +312,15 @@ async function saveRule(
       v.scopeId,
       v.active,
       automatic,
+      v.liveTrackingEnabled,
     ];
     const result = id
       ? await c.query(
-          `UPDATE recurring_schedules SET employee_id=$2,location_id=$3,weekdays=$4,starts_at=$5,ends_at=$6,unpaid_break_minutes=$7,grace_minutes=$8,effective_from=$9,effective_until=$10,created_by=$11,name=$12,scope=$13,scope_id=$14,active=$15,auto_publish=$16,updated_at=now() WHERE company_id=$1 AND id=$17 RETURNING id`,
+          `UPDATE recurring_schedules SET employee_id=$2,location_id=$3,weekdays=$4,starts_at=$5,ends_at=$6,unpaid_break_minutes=$7,grace_minutes=$8,effective_from=$9,effective_until=$10,created_by=$11,name=$12,scope=$13,scope_id=$14,active=$15,auto_publish=$16,live_tracking_enabled=$17,updated_at=now() WHERE company_id=$1 AND id=$18 RETURNING id`,
           [...values, id],
         )
       : await c.query(
-          `INSERT INTO recurring_schedules(company_id,employee_id,location_id,weekdays,starts_at,ends_at,unpaid_break_minutes,grace_minutes,effective_from,effective_until,created_by,name,scope,scope_id,active,auto_publish) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id`,
+          `INSERT INTO recurring_schedules(company_id,employee_id,location_id,weekdays,starts_at,ends_at,unpaid_break_minutes,grace_minutes,effective_from,effective_until,created_by,name,scope,scope_id,active,auto_publish,live_tracking_enabled) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING id`,
           values,
         );
     const summary = automatic ? await materializeWeekly(c, company) : {};
@@ -385,24 +389,22 @@ weeklyRouter.post(
         [a.companyId],
       )
     ).rows[0].today;
-    res
-      .status(201)
-      .json({
-        data: await saveRule(
-          a.companyId,
-          a.sub,
-          {
-            ...v,
-            scope: "EMPLOYEE",
-            scopeId: v.employeeId,
-            startsAt: v.startsAt ?? v.startTime,
-            endsAt: v.endsAt ?? v.endTime,
-            effectiveFrom: v.effectiveFrom ?? date,
-          },
-          undefined,
-          false,
-        ),
-      });
+    res.status(201).json({
+      data: await saveRule(
+        a.companyId,
+        a.sub,
+        {
+          ...v,
+          scope: "EMPLOYEE",
+          scopeId: v.employeeId,
+          startsAt: v.startsAt ?? v.startTime,
+          endsAt: v.endsAt ?? v.endTime,
+          effectiveFrom: v.effectiveFrom ?? date,
+        },
+        undefined,
+        false,
+      ),
+    });
   }),
 );
 weeklyRouter.post(

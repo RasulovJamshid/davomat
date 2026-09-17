@@ -15,7 +15,12 @@ describe("Automatic weekly schedule input", () => {
       scopeId: null,
       effectiveUntil: null,
       active: true,
+      liveTrackingEnabled: false,
     });
+    expect(
+      weeklyRuleSchema.parse({ ...base, liveTrackingEnabled: true })
+        .liveTrackingEnabled,
+    ).toBe(true);
     expect(
       weeklyRuleSchema.parse({
         ...base,

@@ -1385,6 +1385,41 @@ apiRouter.get(
   }),
 );
 
+// One employee, one day per row, for the manager's per-employee week view.
+apiRouter.get(
+  "/employees/:id/attendance",
+  requireManager,
+  asyncHandler(async (request, response) => {
+    const employeeId = z.string().uuid().parse(request.params.id);
+    const range = z
+      .object({ from: z.string().date(), to: z.string().date() })
+      .refine((value) => value.to >= value.from, "Invalid date range")
+      .parse(request.query);
+    if (Date.parse(range.to) - Date.parse(range.from) > 62 * 86400000)
+      throw new HttpError(400, "Select at most two months");
+    const { companyId } = (request as AuthRequest).auth;
+    const result = await pool.query(
+      `WITH company AS (SELECT timezone FROM companies WHERE id=$1),
+       days AS (SELECT d::date AS day FROM generate_series($3::date,$4::date,interval '1 day') d)
+       SELECT days.day::text AS date,s.id AS "shiftId",s.starts_at AS "shiftStart",s.ends_at AS "shiftEnd",l.name AS location,
+              pin.occurred_at AS "clockIn",pin.source AS "clockInSource",pin.within_geofence AS "clockInWithinGeofence",
+              EXISTS(SELECT 1 FROM attendance_face_verifications f WHERE f.punch_id=pin.id) AS "clockInFaceVerified",
+              pout.occurred_at AS "clockOut",pout.within_geofence AS "clockOutWithinGeofence",
+              CASE WHEN leave_request.id IS NOT NULL THEN 'ON_LEAVE' WHEN s.id IS NULL THEN 'UNSCHEDULED' WHEN pin.id IS NULL AND s.starts_at>now() THEN 'UPCOMING' WHEN pin.id IS NULL THEN 'ABSENT' WHEN pin.within_geofence=false THEN 'OUTSIDE_GEOFENCE' WHEN pin.occurred_at>s.starts_at+(s.grace_minutes||' minutes')::interval THEN 'LATE' WHEN pout.id IS NULL THEN 'ON_SHIFT' ELSE 'ON_TIME' END AS status,
+              CASE WHEN pin.id IS NOT NULL AND pout.id IS NOT NULL THEN GREATEST(0,extract(epoch FROM pout.occurred_at-pin.occurred_at)/60-COALESCE(s.unpaid_break_minutes,0))::int END AS "workedMinutes"
+       FROM days CROSS JOIN company
+       LEFT JOIN shifts s ON s.company_id=$1 AND s.employee_id=$2 AND s.status<>'CANCELLED' AND (s.starts_at AT TIME ZONE company.timezone)::date=days.day
+       LEFT JOIN locations l ON l.id=s.location_id
+       LEFT JOIN LATERAL (SELECT id FROM leave_requests lr WHERE lr.company_id=$1 AND lr.employee_id=$2 AND lr.status='APPROVED' AND days.day BETWEEN lr.starts_on AND lr.ends_on LIMIT 1) leave_request ON true
+       LEFT JOIN LATERAL (SELECT * FROM punches p WHERE p.company_id=$1 AND p.employee_id=$2 AND (p.occurred_at AT TIME ZONE company.timezone)::date=days.day AND p.event_type='CLOCK_IN' ORDER BY p.occurred_at LIMIT 1) pin ON true
+       LEFT JOIN LATERAL (SELECT * FROM punches p WHERE p.company_id=$1 AND p.employee_id=$2 AND (p.occurred_at AT TIME ZONE company.timezone)::date=days.day AND p.event_type='CLOCK_OUT' ORDER BY p.occurred_at DESC LIMIT 1) pout ON true
+       ORDER BY days.day`,
+      [companyId, employeeId, range.from, range.to],
+    );
+    response.json({ data: result.rows });
+  }),
+);
+
 const punchUpdateSchema = z.object({
   eventType: z.enum(["CLOCK_IN", "CLOCK_OUT", "BREAK_START", "BREAK_END"]),
   occurredAt: z.string().datetime({ offset: true }),

@@ -37,7 +37,8 @@ import { tashkentDate } from "./operationsApi";
 import { intlLocale, useI18n } from "./i18n";
 import { WeeklySchedules } from "./WeeklySchedules";
 import { scheduleText } from "./scheduleCopy";
-import { PageGuide } from "./Guidance";
+import { PageGuide, Toast } from "./Guidance";
+import { useConfirm } from "./Confirm";
 
 type ShiftTone = "sage" | "blue" | "amber" | "plum" | "slate";
 interface ShiftTemplate {
@@ -45,7 +46,6 @@ interface ShiftTemplate {
   end: string;
   label: string;
   tone: ShiftTone;
-  hours: string;
 }
 interface Day {
   key: string;
@@ -62,28 +62,24 @@ const templates: ShiftTemplate[] = [
     end: "18:00",
     label: "Day shift",
     tone: "sage",
-    hours: "8 paid hours",
   },
   {
     start: "08:00",
     end: "17:00",
     label: "Opening",
     tone: "blue",
-    hours: "8 paid hours",
   },
   {
     start: "14:00",
     end: "22:00",
     label: "Closing",
     tone: "amber",
-    hours: "7 paid hours",
   },
   {
     start: "22:00",
     end: "06:00",
     label: "Night shift",
     tone: "plum",
-    hours: "8 paid hours",
   },
 ];
 const templateNameKeys = [
@@ -95,13 +91,14 @@ const templateNameKeys = [
 const templatePaidHours = [8, 8, 7, 8];
 let scheduleTimeZone = "Asia/Tashkent";
 
-const timeFormatter = new Intl.DateTimeFormat("en-GB", {
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-  timeZone: "Asia/Tashkent",
-});
-const formatTime = (value: string) => timeFormatter.format(new Date(value));
+// Times are shown in the company timezone loaded with the schedule.
+const formatTime = (value: string) =>
+  new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: scheduleTimeZone,
+  }).format(new Date(value));
 const employeeView = (employee: ApiEmployeeOption, index: number) => ({
   ...employee,
   initials: employee.name
@@ -356,8 +353,15 @@ function ShiftEditor({
       setSaving(false);
     }
   };
+  const [confirm, confirmDialog] = useConfirm();
   const remove = async () => {
-    if (!window.confirm(t("cancelShiftConfirm", { name: shift.employee })))
+    if (
+      !(await confirm(t("cancelShiftConfirm", { name: shift.employee }), {
+        title: t("cancelShift"),
+        confirmLabel: t("cancelShift"),
+        danger: true,
+      }))
+    )
       return;
     setSaving(true);
     setError("");
@@ -373,6 +377,7 @@ function ShiftEditor({
   };
   return (
     <>
+      {confirmDialog}
       <button
         className="drawer-scrim"
         onClick={onClose}
@@ -652,7 +657,7 @@ export function SchedulePage({
   const hasDraft = draftCount > 0;
   const notify = (message: string) => {
     setToast(message);
-    window.setTimeout(() => setToast(""), 2400);
+    window.setTimeout(() => setToast(""), 5000);
   };
   const cancel = (shift: ApiShift) => setSelectedShift(shift);
   const publish = async () => {
@@ -1069,10 +1074,7 @@ export function SchedulePage({
               }}
             />
           )}
-          <div className={`toast ${toast ? "visible" : ""}`} role="status">
-            <Check size={17} />
-            {toast}
-          </div>
+          <Toast message={toast || null} onDismiss={() => setToast("")} />
         </>
       )}
     </div>

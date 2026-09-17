@@ -11,6 +11,7 @@ import {
   Filter,
   Mail,
   MapPin,
+  Pencil,
   MoreHorizontal,
   KeyRound,
   Phone,
@@ -35,7 +36,8 @@ import { intlLocale, useI18n } from "./i18n";
 import { TasksPage } from "./TasksPage";
 import { WorkforceReport } from "./WorkforceReport";
 import { EmployeeActivity } from "./EmployeeActivity";
-import { PageGuide } from "./Guidance";
+import { PageGuide, Toast } from "./Guidance";
+import { useConfirm } from "./Confirm";
 
 type EmploymentStatus = "ACTIVE" | "ON_LEAVE" | "INVITED" | "INACTIVE";
 type DirectoryFilter = "ALL" | EmploymentStatus;
@@ -508,6 +510,7 @@ function PersonProfile({
         ? "LOCATION_MANAGER"
         : "ADMINISTRATOR";
   const [section, setSection] = useState("overview");
+  const [confirm, confirmDialog] = useConfirm();
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [person.id]);
@@ -566,7 +569,14 @@ function PersonProfile({
     };
   }, [person.id, deviceRetry]);
   const resetMobileDevice = async () => {
-    if (!window.confirm(t("resetMobileDeviceConfirm"))) return;
+    if (
+      !(await confirm(t("resetMobileDeviceConfirm"), {
+        title: t("resetMobileDevice"),
+        confirmLabel: t("resetMobileDevice"),
+        danger: true,
+      }))
+    )
+      return;
     setDeviceLoading(true);
     try {
       await apiRequest(`/employees/${person.id}/mobile-device`, {
@@ -644,6 +654,7 @@ function PersonProfile({
   };
   return (
     <section className="employee-workspace">
+      {confirmDialog}
       {error && section !== "employmentDetails" && (
         <p className="operations-error" role="alert">
           {error}
@@ -659,12 +670,26 @@ function PersonProfile({
           <h1>{person.name}</h1>
         </div>
         <div className="employee-quick-actions">
+          <button
+            className="primary-button"
+            onClick={() => setSection("employmentDetails")}
+          >
+            <Pencil size={16} />
+            {t("editProfile")}
+          </button>
           {person.status !== "INACTIVE" && (
             <button
               className="secondary-button"
               disabled={saving}
               onClick={async () => {
-                if (!window.confirm(t("removeEmployeeConfirm"))) return;
+                if (
+                  !(await confirm(t("removeEmployeeConfirm"), {
+                    title: t("removeEmployee"),
+                    confirmLabel: t("removeEmployee"),
+                    danger: true,
+                  }))
+                )
+                  return;
                 setSaving(true);
                 try {
                   await onRemove();
@@ -722,7 +747,7 @@ function PersonProfile({
               aria-pressed={section === key}
               onClick={() => setSection(key)}
             >
-              {t(key)}
+              {t(key === "employmentDetails" ? "editProfile" : key)}
             </button>
           ),
         )}
@@ -1178,7 +1203,7 @@ export function PeoplePage({
     await loadDirectory();
     setAdding(false);
     setToast(t("employeeAdded", { name: input.name.trim() }));
-    window.setTimeout(() => setToast(null), 2500);
+    window.setTimeout(() => setToast(null), 5000);
   };
 
   const updateSelected = async (input: {
@@ -1199,7 +1224,7 @@ export function PeoplePage({
     await updateEmployee(selected.id, input);
     await loadDirectory();
     setToast(t("employeeUpdated", { name: input.name }));
-    window.setTimeout(() => setToast(null), 2500);
+    window.setTimeout(() => setToast(null), 5000);
   };
   const provisionSelected = async (input: {
     email: string;
@@ -1215,7 +1240,7 @@ export function PeoplePage({
     });
     await loadDirectory();
     setToast(t("employeeCanSignIn", { name: selected.name }));
-    window.setTimeout(() => setToast(null), 2500);
+    window.setTimeout(() => setToast(null), 5000);
     return result;
   };
 
@@ -1515,10 +1540,7 @@ export function PeoplePage({
           locations={meta.locations.map((item) => item.name)}
         />
       )}
-      <div className={`toast ${toast ? "visible" : ""}`}>
-        <Check size={17} />
-        {toast}
-      </div>
+      <Toast message={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }

@@ -29,7 +29,11 @@ import {
   X,
 } from "lucide-react";
 import type { EmployeeRow, ExceptionItem } from "./data";
-import { AttendancePage, type AttendanceTab } from "./AttendancePage";
+import {
+  AttendancePage,
+  type AttendanceTab,
+  type RecordFilter,
+} from "./AttendancePage";
 import { SchedulePage } from "./SchedulePage";
 import { PeoplePage } from "./PeoplePage";
 import { PayrollPage } from "./PayrollPage";
@@ -46,7 +50,7 @@ import { EmployeePortal } from "./EmployeePortal";
 import { LeavePage } from "./LeavePage";
 import { AdvancedPage } from "./AdvancedPage";
 import { NotificationCenter } from "./Notifications";
-import { PageGuide, SetupChecklist, type SetupTarget } from "./Guidance";
+import { PageGuide, SetupChecklist, Toast, type SetupTarget } from "./Guidance";
 import {
   fetchOperationsSnapshot,
   resolveAttendanceException,
@@ -180,13 +184,13 @@ const navGroups: Array<{
 }> = [
   {
     label: "dailyWork",
-    items: ["Overview", "Attendance", "Schedule", "LiveLocations"].map(
+    items: ["Overview", "Attendance", "LiveLocations", "Tasks", "Schedule"].map(
       (label) => navItems.find((item) => item.label === label)!,
     ),
   },
   {
     label: "management",
-    items: ["People", "Leave", "Tasks", "Payroll", "Reports"].map((label) =>
+    items: ["People", "Leave", "Payroll", "Reports"].map((label) =>
       navItems.find((item) => item.label === label)!,
     ),
   },
@@ -370,6 +374,7 @@ function Header({
   query,
   onSearch,
   onNavigate,
+  onNotification,
 }: {
   onMenu: () => void;
   page: Page;
@@ -377,6 +382,7 @@ function Header({
   query: string;
   onSearch: (value: string) => void;
   onNavigate: (page: Page) => void;
+  onNotification: (action: string) => void;
 }) {
   const { t, locale } = useI18n();
   const searchRef = useRef<HTMLInputElement>(null);
@@ -434,7 +440,7 @@ function Header({
       </label>
       <div className="top-actions">
         <LanguageSwitcher compact />
-        <NotificationCenter onAction={(action) => onNavigate(action as Page)} />
+        <NotificationCenter onAction={onNotification} />
         <button
           className="date-button"
           onClick={() => onNavigate("Attendance")}
@@ -457,14 +463,21 @@ function Header({
 function MobileNavigation({
   page,
   onNavigate,
+  exceptionCount,
 }: {
   page: Page;
   onNavigate: (page: Page) => void;
+  exceptionCount: number;
 }) {
   const { t } = useI18n();
-  const items = navItems.filter((item) =>
-    ["Overview", "Attendance", "Schedule", "People"].includes(item.label),
-  );
+  // The five things a manager does on a phone; everything else is in the menu.
+  const items = [
+    "Overview",
+    "Attendance",
+    "LiveLocations",
+    "Tasks",
+    "People",
+  ].map((label) => navItems.find((item) => item.label === label)!);
   return (
     <nav className="mobile-navigation" aria-label={t("quickNavigation")}>
       {items.map(({ label, icon: Icon }) => (
@@ -476,6 +489,11 @@ function MobileNavigation({
         >
           <Icon size={19} />
           <span>{t(label.toLowerCase())}</span>
+          {label === "Attendance" && exceptionCount > 0 && (
+            <i className="mobile-nav-badge" aria-hidden="true">
+              {exceptionCount > 9 ? "9+" : exceptionCount}
+            </i>
+          )}
         </button>
       ))}
     </nav>
@@ -813,7 +831,7 @@ function Overview({
   onReview,
   onPeople,
   onAttendance,
-  onSchedule,
+  onTasks,
   onLiveLocations,
   onSetup,
 }: {
@@ -826,8 +844,8 @@ function Overview({
   onRetry: () => void;
   onReview: (id: string | number) => void;
   onPeople: () => void;
-  onAttendance: () => void;
-  onSchedule: () => void;
+  onAttendance: (filter?: RecordFilter) => void;
+  onTasks: () => void;
   onLiveLocations: () => void;
   onSetup: (target: SetupTarget) => void;
 }) {
@@ -875,18 +893,11 @@ function Overview({
           <span>{t("startHere")}</span>
           <strong>{t("commonTasks")}</strong>
         </div>
-        <button onClick={onAttendance}>
+        <button onClick={() => onAttendance()}>
           <Clock3 size={18} />
           <span>
             <strong>{t("checkAttendance")}</strong>
             <small>{t("checkAttendanceHelp")}</small>
-          </span>
-        </button>
-        <button onClick={onSchedule}>
-          <CalendarDays size={18} />
-          <span>
-            <strong>{t("planWork")}</strong>
-            <small>{t("planWorkHelp")}</small>
           </span>
         </button>
         <button onClick={onLiveLocations}>
@@ -894,6 +905,13 @@ function Overview({
           <span>
             <strong>{t("locateTeam")}</strong>
             <small>{t("locateTeamHelp")}</small>
+          </span>
+        </button>
+        <button onClick={onTasks}>
+          <ClipboardList size={18} />
+          <span>
+            <strong>{t("assignTask")}</strong>
+            <small>{t("assignTaskHelp")}</small>
           </span>
         </button>
       </section>
@@ -907,7 +925,7 @@ function Overview({
           })}
           tone="mint"
           icon={UserRoundCheck}
-          onClick={onAttendance}
+          onClick={() => onAttendance("working")}
         />
         <MetricCard
           label={t("lateArrivals")}
@@ -915,7 +933,7 @@ function Overview({
           note={t("pastGracePeriod")}
           tone="sand"
           icon={Clock3}
-          onClick={onAttendance}
+          onClick={() => onAttendance("late")}
         />
         <MetricCard
           label={t("absentToday")}
@@ -923,7 +941,7 @@ function Overview({
           note={t("approvedLeaveCount", { count: dashboard.approvedLeave })}
           tone="rose"
           icon={UsersRound}
-          onClick={onAttendance}
+          onClick={() => onAttendance("absent")}
         />
         <MetricCard
           label={t("openExceptions")}
@@ -986,6 +1004,12 @@ function WorkspaceApp({
   const [menuOpen, setMenuOpen] = useState(false);
   const [globalSearch, setGlobalSearch] = useState("");
   const [attendanceTab, setAttendanceTab] = useState<AttendanceTab>("records");
+  const [attendanceFilter, setAttendanceFilter] = useState<RecordFilter>("all");
+  const openAttendance = (filter: RecordFilter = "all") => {
+    setAttendanceTab("records");
+    setAttendanceFilter(filter);
+    setPage("Attendance");
+  };
   const [attendanceDate, setAttendanceDate] = useState(() => tashkentDate());
   const [exceptions, setExceptions] = useState<ExceptionItem[]>([]);
   const [attendance, setAttendance] = useState<EmployeeRow[]>([]);
@@ -1114,7 +1138,7 @@ function WorkspaceApp({
           : t("exceptionApprovedAudit")
         : t("exceptionRejectedAudit"),
     );
-    window.setTimeout(() => setResolutionToast(null), 2400);
+    window.setTimeout(() => setResolutionToast(null), 5000);
   };
   const reviewException = (_id: string | number) => {
     setAttendanceTab("exceptions");
@@ -1129,7 +1153,7 @@ function WorkspaceApp({
     await recordPunch(input);
     await refreshOperations();
     setResolutionToast(t("clockEventRecordedRefreshed"));
-    window.setTimeout(() => setResolutionToast(null), 2400);
+    window.setTimeout(() => setResolutionToast(null), 5000);
   };
   return (
     <div className="app-shell">
@@ -1156,6 +1180,14 @@ function WorkspaceApp({
           companyName={user.company.name}
           query={globalSearch}
           onSearch={setGlobalSearch}
+          onNotification={(action) => {
+            // Attendance notifications are always about an open issue.
+            if (action === "Attendance") {
+              setAttendanceDate(tashkentDate());
+              return reviewException(0);
+            }
+            navigate(action as Page);
+          }}
           onNavigate={(next) => {
             if (next === "Attendance") setAttendanceDate(tashkentDate());
             navigate(next);
@@ -1176,11 +1208,8 @@ function WorkspaceApp({
                 setPeopleAddRequest((current) => current + 1);
                 setPage("People");
               }}
-              onAttendance={() => {
-                setAttendanceTab("records");
-                setPage("Attendance");
-              }}
-              onSchedule={() => navigate("Schedule")}
+              onAttendance={openAttendance}
+              onTasks={() => navigate("Tasks")}
               onLiveLocations={() => navigate("LiveLocations")}
               onSetup={openSetupStep}
             />
@@ -1194,6 +1223,8 @@ function WorkspaceApp({
               loading={operationsLoading}
               tab={attendanceTab}
               onTabChange={setAttendanceTab}
+              filter={attendanceFilter}
+              onFilterChange={setAttendanceFilter}
               onResolve={resolveException}
               onRecordPunch={addPunch}
             />
@@ -1222,7 +1253,7 @@ function WorkspaceApp({
           {page === "Schedule" && (
             <SchedulePage initialEmployeeId={scheduleEmployeeId} />
           )}
-          {page === "Tasks" && <TasksPage />}
+          {page === "Tasks" && <TasksPage timeZone={user.company.timezone} />}
           {page === "Reports" && <ReportsPage />}
           {page === "Leave" && <LeavePage />}
           {page === "People" && (
@@ -1236,12 +1267,7 @@ function WorkspaceApp({
             />
           )}
           {page === "Payroll" && (
-            <PayrollPage
-              onOpenAttendance={() => {
-                setAttendanceTab("records");
-                setPage("Attendance");
-              }}
-            />
+            <PayrollPage onOpenAttendance={() => openAttendance()} />
           )}
           {page === "Settings" && (
             <SettingsPage
@@ -1254,11 +1280,15 @@ function WorkspaceApp({
           )}
         </main>
       </div>
-      <MobileNavigation page={page} onNavigate={navigate} />
-      <div className={`toast ${resolutionToast ? "visible" : ""}`}>
-        <Check size={17} />
-        {resolutionToast}
-      </div>
+      <MobileNavigation
+        page={page}
+        onNavigate={navigate}
+        exceptionCount={exceptions.length}
+      />
+      <Toast
+        message={resolutionToast}
+        onDismiss={() => setResolutionToast(null)}
+      />
     </div>
   );
 }

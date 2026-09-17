@@ -2,9 +2,8 @@ import { describe, expect, it } from "vitest";
 
 process.env.JWT_SECRET = "test-secret-that-is-at-least-32-characters";
 process.env.DB_PASSWORD = "test-password";
-const { decodeAttendanceSelfie, hashInstallationId } = await import(
-  "./mobileVerification.js"
-);
+const { decodeAttendanceSelfie, hashInstallationId } =
+  await import("./mobileVerification.js");
 
 describe("mobile attendance verification", () => {
   it("hashes installation identifiers without retaining the raw identifier", () => {

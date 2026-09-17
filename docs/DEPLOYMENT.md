@@ -120,6 +120,6 @@ database before upgrading and keep the previous image tags available for rollbac
   or replay attacks, add platform device attestation and a certified liveness/matching
   provider before treating a selfie as biometric identity proof.
 - Live location must be enabled explicitly on an individual shift. The API accepts
-  updates only during that published shift and retains one latest point rather than a
+  updates only during that published shift and retains the latest point plus a 7-day route history rather than a
   route history. Document the business purpose, notify employees, restrict manager
   access, and define a deletion policy before enabling scheduled tracking.

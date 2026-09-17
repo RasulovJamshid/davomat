@@ -156,9 +156,7 @@ export function mapExceptions(rows: ExceptionApiRow[]): ExceptionItem[] {
   }));
 }
 
-export async function fetchOperationsSnapshot(
-  date = tashkentDate(),
-): Promise<{
+export async function fetchOperationsSnapshot(date = tashkentDate()): Promise<{
   dashboard: DashboardData;
   attendance: EmployeeRow[];
   exceptions: ExceptionItem[];

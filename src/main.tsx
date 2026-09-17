@@ -7,6 +7,8 @@ import { I18nProvider } from "./i18n";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <I18nProvider><App /></I18nProvider>
+    <I18nProvider>
+      <App />
+    </I18nProvider>
   </StrictMode>,
 );

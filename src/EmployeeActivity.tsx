@@ -41,7 +41,7 @@ export function EmployeeActivity({ employeeId }: { employeeId: string }) {
     KIOSK: "faceKiosk",
     TURNSTILE: "turnstile",
     WEB: "webBrowser",
-  MANUAL: "manual",
+    MANUAL: "manual",
     QR: "qrCode",
   };
   return (

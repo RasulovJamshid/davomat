@@ -52,6 +52,6 @@ start while the permission remains **Only while using the app**.
 `POST /api/me/live-location` rejects updates unless the published shift is currently
 active and tracking was enabled for it. It also verifies the bound mobile installation,
 capture freshness, and reported accuracy. The manager-only `GET /api/live-locations`
-returns active authorized shifts and their latest point. The database stores one latest
+returns active authorized shifts and their latest point; `/live-locations/:shiftId/history` returns the route. The database stores one latest
 point per shift, not an employee route history, and the scheduler removes it after the
 shift ends or tracking is disabled.

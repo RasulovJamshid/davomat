@@ -116,8 +116,7 @@ const messages: Record<ApiLocale, Record<string, string>> = {
     "Attendance selfie not found": "Селфи посещаемости не найдено",
     "The mobile app is only available to employees":
       "Мобильное приложение доступно только сотрудникам",
-    "Live location update is no longer current":
-      "Данные геолокации устарели",
+    "Live location update is no longer current": "Данные геолокации устарели",
     "An active employee profile is required":
       "Требуется активный профиль сотрудника",
     "Live location is not enabled for an active shift":

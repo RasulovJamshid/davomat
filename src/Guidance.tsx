@@ -69,6 +69,40 @@ export function PageGuide({
   );
 }
 
+/**
+ * Success toast. Stays for a few seconds and can be dismissed by hand, so a
+ * message is never lost because the user looked away.
+ */
+export function Toast({
+  message,
+  onDismiss,
+}: {
+  message: string | null;
+  onDismiss: () => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <div
+      className={`toast ${message ? "visible" : ""}`}
+      role="status"
+      aria-live="polite"
+    >
+      <Check size={17} aria-hidden="true" />
+      <span>{message}</span>
+      {message && (
+        <button
+          type="button"
+          className="toast-dismiss"
+          onClick={onDismiss}
+          aria-label={t("dismiss")}
+        >
+          <X size={15} />
+        </button>
+      )}
+    </div>
+  );
+}
+
 /** Inline explanation shown next to a control that is disabled or unusual. */
 export function Hint({ children }: { children: ReactNode }) {
   return (

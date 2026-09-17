@@ -32,7 +32,7 @@ import {
 import { tashkentDate } from "./operationsApi";
 import { intlLocale, useI18n, type Locale } from "./i18n";
 import { AdvancedPage } from "./AdvancedPage";
-import { PageGuide } from "./Guidance";
+import { PageGuide, Toast } from "./Guidance";
 
 type PayrollStep = "generate" | "review" | "approve" | "paid" | "done";
 const payrollSteps: Array<Exclude<PayrollStep, "done">> = [
@@ -592,7 +592,7 @@ export function PayrollPage({
           : "paid";
   const notify = (message: string) => {
     setToast(message);
-    window.setTimeout(() => setToast(""), 2500);
+    window.setTimeout(() => setToast(""), 5000);
   };
   const approve = async (id: string) => {
     await approvePayslip(id);
@@ -996,7 +996,27 @@ export function PayrollPage({
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7}>{t("noPayslips")}</td>
+                    <td colSpan={7}>
+                      <div className="empty-state">
+                        <span>
+                          <WalletCards size={22} />
+                        </span>
+                        <strong>{t("noPayslips")}</strong>
+                        {!periodPayroll.length && (
+                          <button
+                            type="button"
+                            className="primary-button"
+                            onClick={generate}
+                            disabled={runningAction !== null}
+                          >
+                            <Plus size={16} />
+                            {runningAction === "generate"
+                              ? t("generating")
+                              : t("generateMonth")}
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -1028,10 +1048,7 @@ export function PayrollPage({
           }}
         />
       )}
-      <div className={`toast ${toast ? "visible" : ""}`}>
-        <Check size={17} />
-        {toast}
-      </div>
+      <Toast message={toast || null} onDismiss={() => setToast("")} />
     </div>
   );
 }

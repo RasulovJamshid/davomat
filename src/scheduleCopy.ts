@@ -105,20 +105,28 @@ const copy: Record<string, [string, string, string]> = {
     "Настройте повторение для обычной рабочей недели. В календаре меняйте отдельные смены или добавляйте разовые.",
     "Muntazam ish uchun haftalik jadvalni sozlang. Taqvimda alohida smenani oʻzgartiring yoki bir martalik smena qoʻshing.",
   ],
-  moved: [
-    "Weekly schedules now live in Schedule",
-    "Повторяющиеся графики теперь в разделе «График»",
-    "Haftalik jadvallar endi Jadval boʻlimida",
-  ],
-  open: ["Open Schedule", "Открыть график", "Jadvalni ochish"],
   calendarException: ["One-off shift", "Разовая смена", "Bir martalik smena"],
-  find: ["Find a section…", "Найти раздел…", "Boʻlimni qidirish…"],
   generated: [
     "Calendar maintained through",
     "Календарь заполнен до",
     "Taqvim shu sanagacha toʻldirilgan",
   ],
   name: ["Schedule name", "Название графика", "Jadval nomi"],
+  tracking: [
+    "Track live location during these shifts",
+    "Отслеживать геолокацию во время этих смен",
+    "Bu smenalarda jonli joylashuvni kuzatish",
+  ],
+  trackingHelp: [
+    "Employees see a tracking indicator in the app. Only while a shift is running.",
+    "Сотрудники видят индикатор отслеживания в приложении. Только во время смены.",
+    "Xodimlar ilovada kuzatuv belgisini ko‘radi. Faqat smena davomida.",
+  ],
+  trackingOn: [
+    "Live location on",
+    "Геолокация включена",
+    "Jonli joylashuv yoqilgan",
+  ],
 };
 export function scheduleText(locale: Locale, key: string) {
   return copy[key]?.[locale === "ru" ? 1 : locale === "uz" ? 2 : 0] ?? key;

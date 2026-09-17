@@ -22,9 +22,24 @@ import { intlLocale, useI18n } from "./i18n";
 import { AttendanceEventsModal } from "./AttendanceEventsModal";
 import { GeofenceStatus } from "./GeofenceStatus";
 import { Hint, PageGuide } from "./Guidance";
+import { EmployeeAttendance } from "./EmployeeAttendance";
 
-export type AttendanceTab = "records" | "exceptions";
-type RecordFilter = "all" | "working" | "attention";
+export type AttendanceTab = "records" | "exceptions" | "employee";
+export type RecordFilter = "all" | "working" | "attention" | "late" | "absent";
+const recordFilters: RecordFilter[] = [
+  "all",
+  "working",
+  "attention",
+  "late",
+  "absent",
+];
+const recordFilterLabelKey: Record<RecordFilter, string> = {
+  all: "allRecords",
+  working: "workingNow",
+  attention: "needsAttention",
+  late: "lateOnly",
+  absent: "absentOnly",
+};
 type Resolution = "approved" | "rejected";
 
 interface AttendancePageProps {
@@ -34,6 +49,9 @@ interface AttendancePageProps {
   loading: boolean;
   tab: AttendanceTab;
   onTabChange: (tab: AttendanceTab) => void;
+  /** Record filter, owned by the shell so dashboard cards can preset it. */
+  filter: RecordFilter;
+  onFilterChange: (filter: RecordFilter) => void;
   onResolve: (
     id: string | number,
     resolution: Resolution,
@@ -329,14 +347,17 @@ function RecordsView({
   records,
   loading,
   date,
+  filter,
+  onFilterChange: setFilter,
 }: {
   records: EmployeeRow[];
   loading: boolean;
   date: string;
+  filter: RecordFilter;
+  onFilterChange: (filter: RecordFilter) => void;
 }) {
   const { t } = useI18n();
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<RecordFilter>("all");
   const [selected, setSelected] = useState<EmployeeRow | null>(null);
   const [managing, setManaging] = useState<EmployeeRow | null>(null);
   const filtered = useMemo(
@@ -354,7 +375,9 @@ function RecordsView({
           (filter === "attention" &&
             ["LATE", "INCOMPLETE", "ABSENT", "OUTSIDE_GEOFENCE"].includes(
               employee.status,
-            ));
+            )) ||
+          (filter === "late" && employee.status === "LATE") ||
+          (filter === "absent" && employee.status === "ABSENT");
         return matchesSearch && matchesFilter;
       }),
     [filter, query, records],
@@ -373,18 +396,14 @@ function RecordsView({
           </label>
           <div className="filter-buttons">
             <Filter size={15} />
-            {(["all", "working", "attention"] as RecordFilter[]).map((item) => (
+            {recordFilters.map((item) => (
               <button
                 key={item}
                 className={filter === item ? "active" : ""}
                 aria-pressed={filter === item}
                 onClick={() => setFilter(item)}
               >
-                {item === "all"
-                  ? t("allRecords")
-                  : item === "working"
-                    ? t("workingNow")
-                    : t("needsAttention")}
+                {t(recordFilterLabelKey[item])}
               </button>
             ))}
           </div>
@@ -804,6 +823,8 @@ export function AttendancePage({
   onResolve,
   onRecordPunch,
   onDateChange,
+  filter,
+  onFilterChange,
 }: AttendancePageProps) {
   const { t } = useI18n();
   const [recording, setRecording] = useState(false);
@@ -864,9 +885,24 @@ export function AttendancePage({
           {t("exceptions")}{" "}
           <span className="alert-count">{exceptions.length}</span>
         </button>
+        <button
+          role="tab"
+          aria-selected={tab === "employee"}
+          className={tab === "employee" ? "active" : ""}
+          onClick={() => onTabChange("employee")}
+        >
+          {t("byEmployee")}
+        </button>
       </div>
+      {tab === "employee" && <EmployeeAttendance />}
       {tab === "records" ? (
-        <RecordsView records={records} loading={loading} date={date} />
+        <RecordsView
+          records={records}
+          loading={loading}
+          date={date}
+          filter={filter}
+          onFilterChange={onFilterChange}
+        />
       ) : tab === "exceptions" ? (
         <div className="exception-workspace">
           <div className="exception-workspace-heading">

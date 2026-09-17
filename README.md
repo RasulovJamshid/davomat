@@ -26,7 +26,7 @@ secured Node API and PostgreSQL database.
 - Flutter employee and management app with camera-only attendance selfies, precise GPS punches,
   one-active-device-per-account enforcement, breaks, schedules, payslips, and requests
 - Per-shift live-location authorization with an employee-visible tracking indicator,
-  background mobile updates, and a manager live map; only the latest point is retained
+  background mobile updates, and a manager live map with the shift route; route points are kept for 7 days
 - Manager-only attendance selfie review and audited employee device reset
 - Browser clock-in/out and breaks, recorded with server time and a separate WEB source;
   mobile attendance continues to require its device, selfie and GPS verification

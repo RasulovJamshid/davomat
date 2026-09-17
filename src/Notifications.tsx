@@ -10,7 +10,44 @@ interface Notice {
   createdAt: string;
   action: string;
   read: boolean;
+  /** Machine-readable type; the server sends it alongside the English title. */
+  kind?: string;
+  meta?: Record<string, string | null> | null;
 }
+
+const kindTitleKey: Record<string, string> = {
+  leave_submitted: "leaveRequestSubmitted",
+  leave_approved: "leaveApproved",
+  leave_declined: "leaveRequestDeclined",
+  correction_pending: "correctionAwaitingReview",
+  correction_approved: "timeCorrectionApproved",
+  correction_declined: "timeCorrectionDeclined",
+  shift_upcoming: "upcomingShift",
+  attendance_issue: "attendanceException",
+  leave_request: "leaveRequest",
+  payroll_review: "payrollNeedsReview",
+};
+// Fallback for servers that only send the English title.
+const legacyTitleKey: Record<string, string> = {
+  "Leave request submitted": "leaveRequestSubmitted",
+  "Leave approved": "leaveApproved",
+  "Leave request declined": "leaveRequestDeclined",
+  "Correction awaiting review": "correctionAwaitingReview",
+  "Time correction approved": "timeCorrectionApproved",
+  "Time correction declined": "timeCorrectionDeclined",
+  "Upcoming shift": "upcomingShift",
+  "Attendance exception": "attendanceException",
+  "Leave request": "leaveRequest",
+  "Payroll needs review": "payrollNeedsReview",
+};
+const issueKey: Record<string, string> = {
+  OUTSIDE_GEOFENCE: "outsideGeofence",
+  LATE: "lateArrival",
+  MISSING_CLOCK_OUT: "missingClockOut",
+  MISSING_CLOCK_IN: "missingClockIn",
+  OVERTIME: "overtimeApproval",
+  CORRECTION_REQUEST: "correctionRequest",
+};
 
 export function NotificationCenter({
   onAction,
@@ -39,61 +76,58 @@ export function NotificationCenter({
     return () => window.clearInterval(timer);
   }, []);
   const unread = notices.filter((item) => !item.read).length;
-  const titleKeys: Record<string, string> = {
-    "Leave request submitted": "leaveRequestSubmitted",
-    "Leave approved": "leaveApproved",
-    "Leave request declined": "leaveRequestDeclined",
-    "Correction awaiting review": "correctionAwaitingReview",
-    "Time correction approved": "timeCorrectionApproved",
-    "Time correction declined": "timeCorrectionDeclined",
-    "Upcoming shift": "upcomingShift",
-    "Attendance exception": "attendanceException",
-    "Leave request": "leaveRequest",
-    "Payroll needs review": "payrollNeedsReview",
-  };
+  const formatDateTime = (value: string) =>
+    new Intl.DateTimeFormat(intlLocale(locale), {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(value));
   const localizedTitle = (item: Notice) =>
-    t(titleKeys[item.title] ?? item.title);
+    t(
+      (item.kind && kindTitleKey[item.kind]) ??
+        legacyTitleKey[item.title] ??
+        item.title,
+    );
   const localizedBody = (item: Notice) => {
-    if (item.key.startsWith("shift:")) {
-      const location = item.body.split(" · ")[0];
-      return t("upcomingShiftBody", {
-        location: location === "Work location" ? t("workLocation") : location,
-        date: new Intl.DateTimeFormat(intlLocale(locale), {
-          dateStyle: "medium",
-          timeStyle: "short",
-        }).format(new Date(item.createdAt)),
-      });
+    const meta = item.meta ?? {};
+    const kind = item.kind ?? item.key.split(":")[0];
+    switch (kind) {
+      case "shift_upcoming":
+      case "shift":
+        return t("upcomingShiftBody", {
+          location: meta.location ?? t("workLocation"),
+          date: formatDateTime(meta.startsAt ?? item.createdAt),
+        });
+      case "leave_submitted":
+      case "leave_approved":
+      case "leave_declined":
+        return t("leaveDates", {
+          start: meta.startsOn ?? "",
+          end: meta.endsOn ?? "",
+        });
+      case "leave_request":
+        return t("employeeLeaveDates", {
+          employee: meta.employee ?? "",
+          start: meta.startsOn ?? "",
+          end: meta.endsOn ?? "",
+        });
+      case "payroll_review":
+      case "payroll":
+        return t("employeeAttendanceIssue", {
+          employee: meta.employee ?? item.body.split(" · ")[0],
+        });
+      case "attendance_issue":
+      case "exception":
+        return t("employeeIssue", {
+          employee: meta.employee ?? item.body.split(" · ")[0],
+          issue: t(issueKey[meta.issueType ?? ""] ?? item.body),
+        });
+      case "correction_pending":
+      case "correction_approved":
+      case "correction_declined":
+        return meta.details ?? item.body;
+      default:
+        return item.body;
     }
-    if (item.key.startsWith("leave:")) {
-      const [prefix, end] = item.body.split(" to ");
-      const parts = prefix.split(" · ");
-      const start = parts.at(-1) ?? prefix;
-      return parts.length > 1
-        ? t("employeeLeaveDates", { employee: parts[0], start, end: end ?? "" })
-        : t("leaveDates", { start, end: end ?? "" });
-    }
-    if (item.key.startsWith("payroll:")) {
-      return t("employeeAttendanceIssue", {
-        employee: item.body.split(" · ")[0],
-      });
-    }
-    if (item.key.startsWith("exception:")) {
-      const [employee, issue = ""] = item.body.split(" · ");
-      const issueKey = issue.replaceAll(" ", "_").toUpperCase();
-      const keys: Record<string, string> = {
-        OUTSIDE_GEOFENCE: "outsideGeofence",
-        LATE: "lateArrival",
-        MISSING_CLOCK_OUT: "missingClockOut",
-        MISSING_CLOCK_IN: "missingClockIn",
-        OVERTIME: "overtimeApproval",
-        CORRECTION_REQUEST: "correctionRequest",
-      };
-      return t("employeeIssue", {
-        employee,
-        issue: t(keys[issueKey] ?? issue),
-      });
-    }
-    return item.body;
   };
   const markRead = async (keys: string[]) => {
     if (!keys.length) return;
@@ -163,12 +197,7 @@ export function NotificationCenter({
                     <span>
                       <strong>{localizedTitle(item)}</strong>
                       <p>{localizedBody(item)}</p>
-                      <time>
-                        {new Intl.DateTimeFormat(intlLocale(locale), {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                        }).format(new Date(item.createdAt))}
-                      </time>
+                      <time>{formatDateTime(item.createdAt)}</time>
                     </span>
                   </button>
                 ))

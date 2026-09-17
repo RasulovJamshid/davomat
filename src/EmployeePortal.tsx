@@ -24,6 +24,7 @@ import { intlLocale, LanguageSwitcher, useI18n } from "./i18n";
 import { TasksPage } from "./TasksPage";
 import { WorkforceReport } from "./WorkforceReport";
 import { BrandMark } from "./BrandMark";
+import { useConfirm } from "./Confirm";
 
 type EventType = "CLOCK_IN" | "CLOCK_OUT" | "BREAK_START" | "BREAK_END";
 interface PortalShift {
@@ -89,6 +90,15 @@ interface PortalData {
   corrections: PortalCorrection[];
   leaves: PortalLeave[];
   leaveBalance: { annualAllowance: number; annualUsed: number };
+  tasks?: PortalTask[];
+}
+interface PortalTask {
+  id: string;
+  title: string;
+  dueAt: string;
+  priority: string;
+  status: "NEW" | "IN_PROGRESS" | "DONE";
+  location: string | null;
 }
 interface AvailabilityItem {
   id: string;
@@ -784,6 +794,23 @@ export function EmployeePortal({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [clocking, setClocking] = useState(false);
+  const [taskBusy, setTaskBusy] = useState("");
+  const advanceTask = async (task: PortalTask) => {
+    setTaskBusy(task.id);
+    try {
+      await apiRequest(`/tasks/${task.id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          status: task.status === "NEW" ? "IN_PROGRESS" : "DONE",
+        }),
+      });
+      await load();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : t("loadFailed"));
+    } finally {
+      setTaskBusy("");
+    }
+  };
   const [clockMessage, setClockMessage] = useState("");
   const [tab, setTab] = useState<
     "home" | "schedule" | "pay" | "requests" | "tasks" | "hours"
@@ -866,8 +893,15 @@ export function EmployeePortal({
       setClocking(false);
     }
   };
+  const [confirm, confirmDialog] = useConfirm();
   const cancelLeave = async (id: string) => {
-    if (!window.confirm(t("cancelLeaveConfirm"))) return;
+    if (
+      !(await confirm(t("cancelLeaveConfirm"), {
+        confirmLabel: t("confirmAction"),
+        danger: true,
+      }))
+    )
+      return;
     try {
       await apiRequest(`/me/leaves/${id}/cancel`, { method: "PATCH" });
       await load();
@@ -903,6 +937,7 @@ export function EmployeePortal({
   const profile = data.profile;
   return (
     <main className="employee-portal">
+      {confirmDialog}
       <header className="portal-header">
         <div className="portal-brand">
           <span>
@@ -1056,6 +1091,52 @@ export function EmployeePortal({
                 <ShieldCheck size={16} />
                 {t("webAttendanceHint")}
               </div>
+            </section>
+            <section className="portal-panel portal-tasks">
+              <div className="portal-panel-heading">
+                <div>
+                  <h2>{t("todaysTasks")}</h2>
+                  <p>{t("todaysTasksHint")}</p>
+                </div>
+                <button onClick={() => setTab("tasks")}>
+                  {t("openAllTasks")}
+                </button>
+              </div>
+              {!data.tasks?.length ? (
+                <div className="portal-empty">
+                  <ClipboardList size={22} />
+                  <p>{t("noTasksToday")}</p>
+                </div>
+              ) : (
+                <ul className="portal-task-list">
+                  {data.tasks.map((task) => {
+                    const overdue = Date.parse(task.dueAt) < Date.now();
+                    return (
+                      <li key={task.id} className={overdue ? "overdue" : ""}>
+                        <div>
+                          <strong>{task.title}</strong>
+                          <small>
+                            {formatTime(task.dueAt)}
+                            {task.location ? ` · ${task.location}` : ""}
+                            {overdue ? ` · ${t("taskLaneOverdue")}` : ""}
+                          </small>
+                        </div>
+                        <button
+                          className="portal-secondary"
+                          disabled={taskBusy === task.id}
+                          onClick={() => void advanceTask(task)}
+                        >
+                          {t(
+                            task.status === "NEW"
+                              ? "startTask"
+                              : "completeTask",
+                          )}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </section>
             <section className="portal-panel">
               <div className="portal-panel-heading">

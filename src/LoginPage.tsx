@@ -19,12 +19,22 @@ import {
 import { LanguageSwitcher, useI18n } from "./i18n";
 import { BrandMark } from "./BrandMark";
 
+const LAST_COMPANY_KEY = "davomat.lastCompany";
+const readLastCompany = () => {
+  try {
+    return localStorage.getItem(LAST_COMPANY_KEY) ?? "";
+  } catch {
+    return "";
+  }
+};
+
 export function LoginPage({
   onAuthenticated,
 }: {
   onAuthenticated: (user: SessionUser) => void;
 }) {
   const { t } = useI18n();
+  const [lastCompany] = useState(readLastCompany);
   const resetToken =
     new URLSearchParams(window.location.search).get("reset") ?? "";
   const [mode, setMode] = useState<"login" | "forgot" | "reset">(
@@ -61,6 +71,11 @@ export function LoginPage({
         setNotice(t("passwordResetSuccess"));
       } else {
         const result = await login(email, password, remembered);
+        try {
+          localStorage.setItem(LAST_COMPANY_KEY, result.user.company.name);
+        } catch {
+          /* storage blocked; the story column simply stays generic */
+        }
         onAuthenticated(result.user);
       }
     } catch (reason) {
@@ -82,9 +97,19 @@ export function LoginPage({
           davomat.
         </div>
         <div className="story-copy">
-          <p className="eyebrow">{t("storyEyebrow")}</p>
-          <h1>{t("storyTitle")}</h1>
-          <p>{t("storyBody")}</p>
+          {lastCompany ? (
+            <>
+              <p className="eyebrow">{t("welcomeBack")}</p>
+              <h1>{t("welcomeBackTo", { company: lastCompany })}</h1>
+              <p>{t("signInToContinue")}</p>
+            </>
+          ) : (
+            <>
+              <p className="eyebrow">{t("storyEyebrow")}</p>
+              <h1>{t("storyTitle")}</h1>
+              <p>{t("storyBody")}</p>
+            </>
+          )}
           <div className="story-points">
             <span>
               <Clock3 size={18} />
