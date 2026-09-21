@@ -32,7 +32,7 @@
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "concurrently": "latest",
-    "prettier": "^3.9.6",
+    "prettier": "^3.9.8",
     "typescript": "latest",
     "vitest": "latest"
   }
